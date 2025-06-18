@@ -726,3 +726,33 @@ function adjustStock(barcode, adjustment) {
         showToast('Network error: ' + error.message);
     });
 }
+
+function loadInventoryList() {
+    fetch('/inventory/count')
+      .then(res => res.json())
+      .then(data => {
+          const list = document.getElementById('inventoryList');
+          list.innerHTML = '';
+          data.forEach(item => {
+              const row = document.createElement('tr');
+              row.innerHTML = `
+                <td>${item.barcode}</td>
+                <td>${item.name}</td>
+                <td>${item.quantity}</td>
+                <td>${item.price}</td>
+                <td>${item.category || ''}</td>
+              `;
+              list.appendChild(row);
+          });
+      });
+}
+// Load inventory list on page load
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadInventoryList(); // 👈 on page load
+});
+
+function afterProductAdded() {
+    loadInventoryList(); // 👈 after adding
+    clearAddProductForm();
+}

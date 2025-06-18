@@ -38,24 +38,22 @@ def inventory_count():
 def inventory_search():
     q = request.args.get('q', '').strip().lower()
     df = load_inventory(app.config['INVENTORY_FILE'])
-    
+
     if not q:
         return jsonify([])
-    
+
     try:
-        # Always try barcode search first
         if q.isdigit():
-            # Convert barcode to string for comparison
             results = df[df['barcode'].astype(str) == q]
             if not results.empty:
-                return jsonify(results.to_dict(orient='records'))
-        
-        # Then try text search
+                return jsonify(results.fillna('').to_dict(orient='records'))
+
         results = df[df['name'].str.lower().str.contains(q, na=False)]
-        return jsonify(results.to_dict(orient='records'))
-        
+        return jsonify(results.fillna('').to_dict(orient='records'))
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 # Update the add function to save products properly
 @app.route('/inventory/add', methods=['POST'])
@@ -63,15 +61,12 @@ def inventory_add():
     try:
         data = request.json or {}
         df = load_inventory(app.config['INVENTORY_FILE'])
-        
-        # Create new product if it doesn't exist
+
         if 'barcode' not in data or not data['barcode']:
             return jsonify({'error': 'Barcode is required'}), 400
-        
-        # Convert barcode to string
+
         barcode = str(data['barcode'])
-        
-        # Create or update product
+
         if barcode in df['barcode'].astype(str).values:
             # Update existing product
             idx = df.index[df['barcode'].astype(str) == barcode].tolist()[0]
@@ -79,7 +74,7 @@ def inventory_add():
                 if key in df.columns and key != 'barcode':
                     df.at[idx, key] = value
         else:
-            # Create new product
+            # Add new product
             new_product = {
                 'barcode': barcode,
                 'name': data.get('name', ''),
@@ -95,12 +90,15 @@ def inventory_add():
                 'image_url': data.get('image_url', '')
             }
             df = pd.concat([df, pd.DataFrame([new_product])], ignore_index=True)
-        
+
         save_inventory(app.config['INVENTORY_FILE'], df)
+        df = df.fillna('')  # ← THIS FIXES YOUR FRONTEND CRASH
+
         return jsonify({'status': 'ok', 'inventory': df.to_dict(orient='records')})
-    
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/inventory/alerts', methods=['GET'])
 def inventory_alerts():
@@ -211,7 +209,15 @@ def adjust_stock():
         adjustment = int(data.get('adjustment', 0))
         
         # Load inventory
+        def load_inventory(filepath):
+            if os.path.exists(filepath):
+                return pd.read_csv(filepath, dtype=str).fillna('')
+            return pd.DataFrame(columns=[
+        'barcode','name','category','quantity','cost','price','expiry',
+        'threshold','distributor','manufacturer','synced','image_url'
+    ])
         df = load_inventory(app.config['INVENTORY_FILE'])
+
         
         # Check if product exists
         if barcode not in df['barcode'].values:
