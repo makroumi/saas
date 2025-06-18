@@ -118,28 +118,31 @@ document.addEventListener('DOMContentLoaded', function() {
 // Functions
 function showTab(tabId) {
     // Hide all tab contents
-    tabContents.forEach(tab => tab.classList.add('hidden'));
-    
-    // Show selected tab content
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
     document.getElementById(tabId).classList.remove('hidden');
-    
-    // Update active tab styling
+
+    // Update tab button styles
     tabButtons.forEach(btn => {
-        btn.classList.remove('active-tab');
-        btn.classList.remove('text-indigo-600');
+        btn.classList.remove('active-tab', 'text-indigo-600');
         btn.classList.add('text-gray-700');
     });
-    
-    // If tabId corresponds to a button, highlight it
-    const activeTabBtn = Array.from(tabButtons).find(btn => btn.getAttribute('onclick').includes(tabId));
-    if (activeTabBtn) {
-        activeTabBtn.classList.add('active-tab', 'text-indigo-600');
-        activeTabBtn.classList.remove('text-gray-700');
+
+    const activeBtn = Array.from(tabButtons).find(btn => btn.getAttribute('onclick')?.includes(tabId));
+    if (activeBtn) {
+        activeBtn.classList.add('active-tab', 'text-indigo-600');
+        activeBtn.classList.remove('text-gray-700');
     }
-    
-    // Update mobile select
+
+    // Sync mobile tab dropdown if exists
     if (mobileTabSelect) mobileTabSelect.value = tabId;
+
+    // 🧠 Auto-load full inventory if "Search Inventory" tab is opened
+    if (tabId === 'search-inventory') {
+        document.getElementById('searchInput').value = ''; // clear input
+        searchInventory(); // load everything
+    }
 }
+
 
 function toggleSyncSettings() {
     syncSettingsPanel.classList.toggle('hidden');
@@ -313,77 +316,73 @@ function removeStockHandler(e) {
 }
 
 function handleSearchInput() {
-    const query = searchInput.value.trim().toLowerCase();
-    
-    // Clear previous results
-    searchResultsTable.classList.add('hidden');
-    searchEmpty.classList.add('hidden');
-    searchSuggestions.classList.add('hidden');
-    
-    if (query.length < 2) {
-        return;
-    }
-    
-    // Show loading
-    searchLoading.classList.remove('hidden');
-    
-    // Fetch from server
-    fetch(`/inventory/search?q=${encodeURIComponent(query)}`)
-        .then(res => res.json())
-        .then(results => {
-            searchLoading.classList.add('hidden');
-            
-            if (results.length === 0) {
-                searchEmpty.classList.remove('hidden');
-                return;
-            }
-            
-            // Display results in table
-            const tbody = searchResultsTable.querySelector('tbody');
-            tbody.innerHTML = '';
-            
-            results.forEach(item => {
-                const row = document.createElement('tr');
-                
-                // Use placeholder if no image available
-                const imgSrc = item.image_url || '/static/images/placeholder.png';
-                
-                row.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 h-10 w-10">
-                                <img src="${imgSrc}" class="h-10 w-10 rounded">
-                            </div>
-                            <div class="ml-4">
-                                <div class="text-sm font-medium text-gray-900">${item.name || 'No name'}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">${item.barcode}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${item.quantity > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
-                            ${item.quantity} in stock
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.category || 'Uncategorized'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button onclick="showProductDetails('${item.barcode}')" class="text-indigo-600 hover:text-indigo-900 mr-3">Details</button>
-                        <button onclick="showTab('place-order')" class="text-green-600 hover:text-green-900">Order</button>
-                    </td>
-                `;
-                tbody.appendChild(row);
-            });
-            
-            searchResultsTable.classList.remove('hidden');
-        })
-        .catch(error => {
-            searchLoading.classList.add('hidden');
-            showToast('Error searching inventory');
-            console.error('Search error:', error);
-        });
+  const query = document.getElementById('searchInput').value.trim();
+  searchInventory(query);
 }
+
+function showLoader(show) {
+  document.getElementById('searchLoading').classList.toggle('hidden', !show);
+  document.getElementById('searchEmpty').classList.add('hidden');
+  document.getElementById('searchResultsTable').classList.add('hidden');
+}
+
+function searchInventory(query = '') {
+  showLoader(true);
+
+  fetch(`/inventory/search?q=${encodeURIComponent(query)}`)
+    .then(res => res.json())
+    .then(data => {
+      showLoader(false);
+
+      const table = document.getElementById('searchResultsTable');
+      const empty = document.getElementById('searchEmpty');
+      const tbody = document.getElementById('searchResultsBody');
+      tbody.innerHTML = '';
+
+      if (!data.length) {
+        table.classList.add('hidden');
+        empty.classList.remove('hidden');
+        return;
+      }
+
+      table.classList.remove('hidden');
+      empty.classList.add('hidden');
+
+      data.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td class="px-6 py-4 whitespace-nowrap">
+            <div class="flex items-center">
+              <div class="flex-shrink-0 h-10 w-10">
+                <img class="h-10 w-10 rounded" src="${item.image_url || 'https://via.placeholder.com/40'}" alt="">
+              </div>
+              <div class="ml-4">
+                <div class="text-sm font-medium text-gray-900">${item.name || 'Unnamed Product'}</div>
+              </div>
+            </div>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.barcode || ''}</td>
+          <td class="px-6 py-4 whitespace-nowrap">
+            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+              ${item.quantity || 0} in stock
+            </span>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.category || ''}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+            <button onclick="showProductDetails('${item.barcode}')" class="text-indigo-600 hover:text-indigo-900 mr-3">Details</button>
+            <button onclick="showTab('place-order')" class="text-green-600 hover:text-green-900">Order</button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    })
+    .catch(error => {
+      console.error('Error fetching inventory:', error);
+      showLoader(false);
+    });
+}
+
+
 
 function selectSuggestion(sku) {
     // In a real app, this would trigger fetching the full product details
@@ -402,23 +401,33 @@ function selectSuggestion(sku) {
     }, 800);
 }
 
-function showProductDetails(sku) {
-    // Set mock data for the demo
-    document.getElementById('detailsProductName').textContent = sku === 'WIDG-001' ? 'Premium Widget' : 'Basic Widget';
-    document.getElementById('detailsProductSKU').textContent = 'SKU: ' + sku;
-    document.getElementById('detailsProductCategory').textContent = 'Electronics';
-    document.getElementById('detailsCurrentStock').textContent = sku === 'WIDG-001' ? '45' : '120';
-    document.getElementById('detailsReorderThreshold').textContent = sku === 'WIDG-001' ? '5' : '20';
-    document.getElementById('detailsUnitCost').textContent = sku === 'WIDG-001' ? '$19.99' : '$9.99';
-    document.getElementById('detailsSellingPrice').textContent = sku === 'WIDG-001' ? '$29.99' : '$14.99';
-    document.getElementById('detailsLastUpdated').textContent = new Date().toLocaleString();
-    document.getElementById('detailsExpiryDate').textContent = '-';
-    document.getElementById('detailsDescription').textContent = sku === 'WIDG-001' 
-        ? 'The premium widget is our flagship product featuring advanced technology and premium materials for superior performance.' 
-        : 'The basic widget is our entry-level product that provides essential functionality at an affordable price point.';
-    
-    productDetailsModal.classList.remove('hidden');
+function showProductDetails(barcode) {
+    fetch(`/inventory/search?q=${barcode}`)
+    .then(res => res.json())
+    .then(data => {
+        if (!data || data.length === 0) return;
+
+        const p = data[0];
+
+        document.getElementById('detailsProductName').textContent = p.name || 'Unnamed Product';
+        document.getElementById('detailsProductSKU').textContent = `SKU: ${p.barcode}`;
+        document.getElementById('detailsProductCategory').textContent = p.category || '-';
+        document.getElementById('detailsCurrentStock').textContent = p.quantity || '0';
+        document.getElementById('detailsReorderThreshold').textContent = p.threshold || '-';
+        document.getElementById('detailsUnitCost').textContent = p.cost ? `$${p.cost}` : '-';
+        document.getElementById('detailsSellingPrice').textContent = p.price ? `$${p.price}` : '-';
+        document.getElementById('detailsLastUpdated').textContent = new Date().toLocaleString();
+        document.getElementById('detailsExpiryDate').textContent = p.expiry || '-';
+        document.getElementById('detailsDescription').textContent = p.description || 'No description available.';
+
+        const img = document.getElementById('detailsProductImage');
+        img.src = p.image_url || 'https://via.placeholder.com/80';
+        img.alt = p.name || 'Product Image';
+
+        productDetailsModal.classList.remove('hidden');
+    });
 }
+
 
 function closeProductDetails() {
     productDetailsModal.classList.add('hidden');

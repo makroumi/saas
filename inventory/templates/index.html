@@ -204,80 +204,60 @@
                 </div>
             </div>
 
-            <!-- Search Inventory Tab -->
-            <div id="search-inventory" class="tab-content hidden">
-                <div class="glass-card p-6 rounded-xl">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
-                        <h2 class="text-xl font-semibold mb-4 md:mb-0 text-gray-800">Search Inventory</h2>
-                        <div class="relative w-full md:w-96">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <i class="fas fa-search text-gray-400"></i>
-                            </div>
-                            <input type="text" id="searchInput" class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="Search by product name or SKU...">
-                            <div id="searchSuggestions" class="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto hidden">
-                                <!-- Suggestions will appear here -->
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div id="searchResultsContainer" class="bg-white rounded-lg overflow-hidden border border-gray-200">
-                        <!-- Loading state -->
-                        <div id="searchLoading" class="hidden p-8 flex flex-col items-center justify-center">
-                            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
-                            <p>Loading inventory...</p>
-                        </div>
-                        
-                        <!-- Empty state -->
-                        <div id="searchEmpty" class="hidden p-8 flex flex-col items-center justify-center text-center">
-                            <i class="fas fa-box-open text-4xl text-gray-400 mb-4"></i>
-                            <h3 class="text-lg font-medium text-gray-900 mb-1">No inventory found</h3>
-                            <p class="text-gray-500">Try a different search term or <button onclick="showTab('add-product')" class="text-indigo-600 hover:text-indigo-800">add a new product</button>.</p>
-                        </div>
-                        
-                        <!-- Results table -->
-                        <table id="searchResultsTable" class="min-w-full divide-y divide-gray-200 hidden">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                <!-- Sample product row -->
-                                <tr>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="flex items-center">
-                                            <div class="flex-shrink-0 h-10 w-10">
-                                                <img class="h-10 w-10 rounded" src="https://via.placeholder.com/40" alt="">
-                                            </div>
-                                            <div class="ml-4">
-                                                <div class="text-sm font-medium text-gray-900">Premium Widget</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="text-sm text-gray-900">WIDG-001</div>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                            45 in stock
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Widgets</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button onclick="showProductDetails('WIDG-001')" class="text-indigo-600 hover:text-indigo-900 mr-3">Details</button>
-                                        <button onclick="showTab('place-order')" class="text-green-600 hover:text-green-900">Order</button>
-                                    </td>
-                                </tr>
-                                <!-- More rows would be dynamically added here -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+        <!-- Search Inventory Tab -->
+<div id="search-inventory" class="tab-content hidden">
+  <div class="glass-card p-6 rounded-xl">
+    <div class="flex flex-col md:flex-row md:items-center justify-between mb-6">
+      <h2 class="text-xl font-semibold mb-4 md:mb-0 text-gray-800">Search Inventory</h2>
+      <div class="relative w-full md:w-96">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <i class="fas fa-search text-gray-400"></i>
+        </div>
+        <input
+          type="text"
+          id="searchInput"
+          class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+          placeholder="Search by product name or SKU..."
+          oninput="handleSearchInput()"
+        />
+      </div>
+    </div>
+
+    <div id="searchResultsContainer" class="bg-white rounded-lg overflow-hidden border border-gray-200">
+      <!-- Loading State -->
+      <div id="searchLoading" class="hidden p-8 flex flex-col items-center justify-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
+        <p>Loading inventory...</p>
+      </div>
+
+      <!-- Empty State -->
+      <div id="searchEmpty" class="hidden p-8 flex flex-col items-center justify-center text-center">
+        <i class="fas fa-box-open text-4xl text-gray-400 mb-4"></i>
+        <h3 class="text-lg font-medium text-gray-900 mb-1">No inventory found</h3>
+        <p class="text-gray-500">
+          Try a different search term or
+          <button onclick="showTab('add-product')" class="text-indigo-600 hover:text-indigo-800">add a new product</button>.
+        </p>
+      </div>
+
+      <!-- Results Table -->
+      <table id="searchResultsTable" class="min-w-full divide-y divide-gray-200 hidden">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="searchResultsBody" class="bg-white divide-y divide-gray-200">
+          <!-- Dynamically injected product rows -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
             <!-- Add Product Tab -->
             <div id="add-product" class="tab-content hidden">

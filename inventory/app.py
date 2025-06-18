@@ -39,10 +39,10 @@ def inventory_search():
     q = request.args.get('q', '').strip().lower()
     df = load_inventory(app.config['INVENTORY_FILE'])
 
-    if not q:
-        return jsonify([])
-
     try:
+        if not q:
+            return jsonify(df.fillna('').to_dict(orient='records'))
+
         if q.isdigit():
             results = df[df['barcode'].astype(str) == q]
             if not results.empty:
@@ -53,6 +53,7 @@ def inventory_search():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 
 # Update the add function to save products properly
