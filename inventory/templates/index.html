@@ -132,6 +132,18 @@
                                 <i class="fas fa-camera mr-2"></i>Start Scanner
                             </button>
                         </div>
+                        <!-- Add scanning instructions near the scanner -->
+<div class="scanner-guide">
+  <p class="text-yellow-500 font-bold">Scanning Tips:</p>
+  <ul class="list-disc pl-5 text-white">
+    <li>Ensure good lighting</li>
+    <li>Hold steady 15-30 cm from camera</li>
+    <li>Align QR code with frame</li>
+  </ul>
+</div>
+
+<!-- Add focus indicator -->
+<div id="scanner-frame" class="absolute border-4 border-green-500"></div>
                         <!-- Barcode Scanner Modal -->
                         <div id="scannerContainer" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-40">
                             <div class="bg-white rounded-lg shadow-lg p-0 flex flex-col items-center relative" style="width:500px;">
@@ -895,7 +907,7 @@
 
     <!-- html5-qrcode CDN (required for barcode scanning) -->
     <!-- Html5Qrcode CDN -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/dist/html5-qrcode.min.js" type="text/javascript"></script>
 
 
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>

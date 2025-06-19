@@ -44,12 +44,33 @@ const scannerVideo = document.getElementById('scannerVideo');
 const startScannerBtn = document.getElementById('startScannerBtn');
 const stopScannerBtn = document.getElementById('stopScannerBtn');
 const switchCameraBtn = document.getElementById('switchCameraBtn');
-const Html5QrcodeScannerState = {
-    NOT_STARTED: 0,
-    SCANNING: 1,
-    PAUSED: 2,
-    STOPPED: 3
+// Test QR codes to try:
+const testCodes = [
+  "https://example.com", 
+  "TEST123456", 
+  "WIFI:S:MyNetwork;T:WPA;P:Password123;;"
+];
+
+// Replace your scanner initialization with this:
+const html5QrCode = new Html5Qrcode("reader");
+const config = {
+  fps: 15,
+  qrbox: 250,
+  experimentalFeatures: {
+    useBarCodeDetectorIfSupported: true
+  },
+  rememberLastUsedCamera: true,
+  supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
 };
+
+html5QrCode.start(
+  cameraId,
+  config,
+  qrCodeSuccessCallback,
+  qrCodeErrorCallback
+).catch(err => {
+  console.error("Scanner startup failed:", err);
+});
 
 // Temporary data for search suggestions
 const searchData = [
@@ -746,3 +767,54 @@ function afterProductAdded() {
     loadInventoryList(); // 👈 after adding
     clearAddProductForm();
 }
+
+function qrCodeErrorCallback(error) {
+  if (error.type === Html5QrcodeErrorTypes.UNKWOWN_ERROR) {
+    console.warn("Scanning error, retrying...", error);
+    // No need to stop scanner for common errors
+  } else {
+    console.error("Critical scanner error:", error);
+    html5QrCode.stop();
+  }
+}
+
+// Update camera selection handler
+document.getElementById('camera-select').addEventListener('change', async function() {
+  if (html5QrCode.isScanning) {
+    await html5QrCode.stop();
+  }
+  
+  // Add video constraints for better focus
+  const constraints = {
+    video: { 
+      deviceId: this.value,
+      focusMode: "continuous"
+    }
+  };
+  
+  startScanner(this.value, constraints);
+});
+
+// Add to your scripts.js
+document.getElementById('qr-file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  Html5Qrcode.scanFile(file)
+    .then(decodedText => {
+      processScanResult(decodedText);
+    })
+    .catch(err => {
+      console.error("File scan failed:", err);
+    });
+});
+
+// Add to scanner initialization
+console.log("Supported capabilities:", Html5Qrcode.getCapabilities());
+
+// Run camera diagnostics
+Html5Qrcode.getCameras().then(cameras => {
+  cameras.forEach(cam => {
+    console.log(`Camera: ${cam.label} | Resolution: ${cam.resolution || 'Unknown'}`);
+  });
+});
