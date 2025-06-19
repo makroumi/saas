@@ -51,6 +51,74 @@ const testCodes = [
   "WIFI:S:MyNetwork;T:WPA;P:Password123;;"
 ];
 
+// Add this at the TOP of your scripts.js
+document.addEventListener('DOMContentLoaded', function() {
+  // Fix tab switching
+  document.body.addEventListener('click', function(e) {
+    if (e.target.classList.contains('tab-button')) {
+      showTab(e.target.getAttribute('data-tab'));
+    }
+  });
+
+  // Fix header buttons
+  document.body.addEventListener('click', function(e) {
+    if (e.target.id === 'cart-icon' || e.target.id === 'user-icon') {
+      showTab(e.target.id.replace('-icon', ''));
+    }
+  });
+
+  // Prevent form submission refresh
+  const searchForm = document.getElementById('find-product-form');
+  if (searchForm) {
+    searchForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      findProduct();
+    });
+  }
+});
+
+// Make sure showTab is defined globally
+window.showTab = function(tabName) {
+  // ... your existing showTab implementation ...
+}
+
+// Add DOMContentLoaded wrapper
+d// Replace your scanner code with:
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof Html5Qrcode === 'function' && document.getElementById("reader")) {
+    const html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { 
+        fps: 10,
+        qrbox: 250 
+      },
+      function(decodedText) {
+        console.log("Scanned:", decodedText);
+        // Handle scan result here
+      },
+      function(error) {
+        console.log("Scan error:", error);
+      }
+    ).catch(error => {
+      console.error("Scanner error:", error);
+    });
+  } else {
+    console.log("Scanner not available");
+  }
+});
+
+// Button functionality recovery
+document.addEventListener('DOMContentLoaded', function() {
+  // Delegate all button clicks
+  document.body.addEventListener('click', function(e) {
+    if (e.target.matches('.add-to-cart')) {
+      // Add your cart functionality here
+      console.log('Add to cart clicked');
+    }
+    // Add other button selectors as needed
+  });
+});
 // Replace your scanner initialization with this:
 const html5QrCode = new Html5Qrcode("reader");
 const config = {
