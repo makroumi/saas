@@ -531,8 +531,8 @@ function hideToast() {
 
 // Barcode Scanner Controls
 let currentCamera = 'environment';
+let html5Scanner = null;
 let scannerActive = false;
-let quaggaReady = false;
 
 // Ensure QuaggaJS is loaded before using
 function ensureQuaggaReady(cb) {
@@ -564,137 +564,83 @@ if (scannerContainer) {
     observer.observe(scannerContainer, { attributes: true });
 }
 
-function startScanner() {
+let lastCode = null;
+let lastDetectedTime = 0;
+// let scannerActive = false; // Removed duplicate declaration
+let currentCameraIndex = 0;
+let availableCameras = [];
+
+async function startScanner() {
     if (scannerActive) return;
-    
-    ensureQuaggaReady(() => {
-        scannerContainer.classList.remove('hidden');
-        if (stopScannerBtn) stopScannerBtn.classList.remove('hidden');
-        if (switchCameraBtn) switchCameraBtn.classList.remove('hidden');
-        scannerActive = true;
-        
-        // Clear overlays
-        const flashOverlay = document.getElementById('flashOverlay');
-        const frameOverlay = document.getElementById('frameOverlay');
-        if (flashOverlay) {
-            flashOverlay.width = 480;
-            flashOverlay.height = 360;
-            flashOverlay.style.display = 'none';
-        }
-        if (frameOverlay) {
-            frameOverlay.width = 480;
-            frameOverlay.height = 360;
-            const ctx = frameOverlay.getContext('2d', { willReadFrequently: true });
-            ctx.clearRect(0, 0, frameOverlay.width, frameOverlay.height);
-        }
-        
-        Quagga.init({
-            inputStream: {
-                name: 'Live',
-                type: 'LiveStream',
-                target: document.querySelector('#scannerVideo'),
-                constraints: {
-                    facingMode: currentCamera,
-                    width: 480,
-                    height: 360
+    console.log("Starting scanner...");
+
+    scannerContainer.classList.remove('hidden');
+    if (stopScannerBtn) stopScannerBtn.classList.remove('hidden');
+    if (switchCameraBtn) switchCameraBtn.classList.remove('hidden');
+    scannerActive = true;
+
+    try {
+        availableCameras = await Html5Qrcode.getCameras();
+        if (availableCameras.length === 0) throw new Error("No cameras found");
+
+        const cameraId = availableCameras[currentCameraIndex].id;
+        console.log("Using camera:", cameraId);
+
+        html5Scanner = new Html5Qrcode("scannerVideo");
+
+        await html5Scanner.start(
+            { deviceId: { exact: cameraId } },
+            {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.77,
+                experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+                supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
+            },
+            (decodedText, result) => {
+                const now = Date.now();
+                if (!decodedText || decodedText === lastCode || decodedText.length < 8 || now - lastDetectedTime < 800) return;
+
+                lastCode = decodedText;
+                lastDetectedTime = now;
+
+                // Flash effect
+                const flashOverlay = document.getElementById('flashOverlay');
+                if (flashOverlay) {
+                    const ctx = flashOverlay.getContext('2d');
+                    ctx.fillStyle = 'rgba(80,255,80,0.4)';
+                    ctx.fillRect(0, 0, flashOverlay.width, flashOverlay.height);
+                    flashOverlay.style.display = 'block';
+                    setTimeout(() => flashOverlay.style.display = 'none', 180);
                 }
-            },
-            locator: { patchSize: 'medium', halfSample: false },
-            numOfWorkers: 2,
-            decoder: {
-                readers: [
-                    'ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader',
-                    'code_128_reader', 'code_39_reader', 'code_39_vin_reader',
-                    'codabar_reader', 'i2of5_reader', '2of5_reader', 'code_93_reader'
-                ]
-            },
-            locate: true,
-            frequency: 10
-        }, function(err) {
-            if (err) {
-                showToast('Scanner error: ' + err.message);
+
                 stopScanner();
-                return;
+                barcodeInput.value = decodedText;
+                fetchProductInfo({ preventDefault: () => {} });
+                showToast("Barcode scanned: " + decodedText);
+            },
+            (errorMessage) => {
+                console.warn("Scanner error:", errorMessage);
             }
-            Quagga.start();
-        });
-        
-        Quagga.onProcessed(function(result) {
-            const frameOverlay = document.getElementById('frameOverlay');
-            if (frameOverlay) {
-                const ctx = frameOverlay.getContext('2d', { willReadFrequently: true });
-                ctx.clearRect(0, 0, frameOverlay.width, frameOverlay.height);
-                if (result && result.boxes) {
-                    ctx.save();
-                    ctx.strokeStyle = '#00FF88';
-                    ctx.lineWidth = 3;
-                    result.boxes.filter(b => b !== undefined).forEach(box => {
-                        ctx.beginPath();
-                        ctx.moveTo(box[0][0], box[0][1]);
-                        for (let i = 1; i < box.length; i++) {
-                            ctx.lineTo(box[i][0], box[i][1]);
-                        }
-                        ctx.closePath();
-                        ctx.stroke();
-                    });
-                    ctx.restore();
-                }
-                if (result && result.box) {
-                    ctx.save();
-                    ctx.strokeStyle = '#FFD600';
-                    ctx.lineWidth = 4;
-                    ctx.beginPath();
-                    ctx.moveTo(result.box[0][0], result.box[0][1]);
-                    for (let i = 1; i < result.box.length; i++) {
-                        ctx.lineTo(result.box[i][0], result.box[i][1]);
-                    }
-                    ctx.closePath();
-                    ctx.stroke();
-                    ctx.restore();
-                }
-            }
-        });
-        
-        let lastCode = null;
-        let lastDetectedTime = 0;
-        Quagga.onDetected(function(result) {
-            if (!scannerActive) return;
-            const code = result.codeResult && result.codeResult.code;
-            const confidence = result.codeResult && result.codeResult.decodedCodes && result.codeResult.decodedCodes[0] && typeof result.codeResult.decodedCodes[0].error !== 'undefined' ? 1 - result.codeResult.decodedCodes[0].error : 1;
-            
-            const now = Date.now();
-            if (!code || code === lastCode || code.length < 8 || confidence < 0.92 || (now - lastDetectedTime < 800)) return;
-            
-            lastCode = code;
-            lastDetectedTime = now;
-            
-            // Snapshot visual effect
-            const flashOverlay = document.getElementById('flashOverlay');
-            if (flashOverlay) {
-                const ctx = flashOverlay.getContext('2d', { willReadFrequently: true });
-                ctx.clearRect(0, 0, flashOverlay.width, flashOverlay.height);
-                ctx.fillStyle = 'rgba(80,255,80,0.4)';
-                ctx.fillRect(0, 0, flashOverlay.width, flashOverlay.height);
-                flashOverlay.style.display = 'block';
-                setTimeout(() => {
-                    flashOverlay.style.display = 'none';
-                    ctx.clearRect(0, 0, flashOverlay.width, flashOverlay.height);
-                }, 180);
-            }
-            
-            stopScanner();
-            barcodeInput.value = code;
-            fetchProductInfo({ preventDefault: () => {} });
-            showToast('Barcode scanned: ' + code);
-        });
-    });
+        );
+
+    } catch (err) {
+        console.error("Failed to start scanner:", err);
+        showToast("Camera not available or permission denied.");
+        stopScanner();
+    }
 }
 
+
+
+
 function stopScanner() {
-    if (window.Quagga && scannerActive) {
-        Quagga.stop();
-        Quagga.offProcessed();
-        Quagga.offDetected();
+    if (html5Scanner && scannerActive) {
+        html5Scanner.stop().then(() => {
+            html5Scanner.clear();
+        }).catch(err => {
+            console.warn("Stop error:", err);
+        });
     }
     scannerActive = false;
     scannerContainer.classList.add('hidden');
@@ -703,12 +649,30 @@ function stopScanner() {
 }
 
 function switchCamera() {
-    currentCamera = (currentCamera === 'environment') ? 'user' : 'environment';
+    if (!availableCameras.length) return;
+    currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+    stopScanner();
+    setTimeout(startScanner, 500);
+}
+
+
+function switchCamera() {
+    if (!availableCameras.length) return;
+    currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+    stopScanner();
+    setTimeout(startScanner, 500);
+}
+
+
+
+function switchCamera() {
+    currentCamera = currentCamera === "environment" ? "user" : "environment";
     if (scannerActive) {
         stopScanner();
-        setTimeout(startScanner, 300);
+        setTimeout(startScanner, 500);
     }
 }
+
 
 // Add this helper function
 function adjustStock(barcode, adjustment) {
