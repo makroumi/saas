@@ -44,6 +44,12 @@ const scannerVideo = document.getElementById('scannerVideo');
 const startScannerBtn = document.getElementById('startScannerBtn');
 const stopScannerBtn = document.getElementById('stopScannerBtn');
 const switchCameraBtn = document.getElementById('switchCameraBtn');
+const Html5QrcodeScannerState = {
+    NOT_STARTED: 0,
+    SCANNING: 1,
+    PAUSED: 2,
+    STOPPED: 3
+};
 
 // Temporary data for search suggestions
 const searchData = [
@@ -570,6 +576,7 @@ let lastDetectedTime = 0;
 let currentCameraIndex = 0;
 let availableCameras = [];
 
+
 async function startScanner() {
     if (scannerActive) return;
     console.log("Starting scanner...");
@@ -580,12 +587,22 @@ async function startScanner() {
     scannerActive = true;
 
     try {
+        // Get all available cameras
         availableCameras = await Html5Qrcode.getCameras();
         if (availableCameras.length === 0) throw new Error("No cameras found");
 
-        const cameraId = availableCameras[currentCameraIndex].id;
+        // Try to prefer built-in camera before Camo or virtual
+        const preferredKeywords = ['integrated', 'built-in', 'hd', 'webcam'];
+        const sortedCameras = availableCameras.sort((a, b) => {
+            const aPref = preferredKeywords.some(k => a.label.toLowerCase().includes(k));
+            const bPref = preferredKeywords.some(k => b.label.toLowerCase().includes(k));
+            return bPref - aPref;
+        });
+
+        const cameraId = sortedCameras[currentCameraIndex || 0].id;
         console.log("Using camera:", cameraId);
 
+        // Initialize scanner
         html5Scanner = new Html5Qrcode("scannerVideo");
 
         await html5Scanner.start(
@@ -608,10 +625,14 @@ async function startScanner() {
                 const flashOverlay = document.getElementById('flashOverlay');
                 if (flashOverlay) {
                     const ctx = flashOverlay.getContext('2d');
+                    ctx.clearRect(0, 0, flashOverlay.width, flashOverlay.height);
                     ctx.fillStyle = 'rgba(80,255,80,0.4)';
                     ctx.fillRect(0, 0, flashOverlay.width, flashOverlay.height);
                     flashOverlay.style.display = 'block';
-                    setTimeout(() => flashOverlay.style.display = 'none', 180);
+                    setTimeout(() => {
+                        flashOverlay.style.display = 'none';
+                        ctx.clearRect(0, 0, flashOverlay.width, flashOverlay.height);
+                    }, 180);
                 }
 
                 stopScanner();
@@ -623,7 +644,6 @@ async function startScanner() {
                 console.warn("Scanner error:", errorMessage);
             }
         );
-
     } catch (err) {
         console.error("Failed to start scanner:", err);
         showToast("Camera not available or permission denied.");
@@ -634,44 +654,41 @@ async function startScanner() {
 
 
 
+
 function stopScanner() {
     if (html5Scanner && scannerActive) {
-        html5Scanner.stop().then(() => {
-            html5Scanner.clear();
-        }).catch(err => {
-            console.warn("Stop error:", err);
-        });
-    }
-    scannerActive = false;
-    scannerContainer.classList.add('hidden');
-    if (stopScannerBtn) stopScannerBtn.classList.add('hidden');
-    if (switchCameraBtn) switchCameraBtn.classList.add('hidden');
-}
-
-function switchCamera() {
-    if (!availableCameras.length) return;
-    currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
-    stopScanner();
-    setTimeout(startScanner, 500);
-}
-
-
-function switchCamera() {
-    if (!availableCameras.length) return;
-    currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
-    stopScanner();
-    setTimeout(startScanner, 500);
-}
-
-
-
-function switchCamera() {
-    currentCamera = currentCamera === "environment" ? "user" : "environment";
-    if (scannerActive) {
-        stopScanner();
-        setTimeout(startScanner, 500);
+        html5Scanner.stop()
+            .then(() => {
+                scannerActive = false;
+                scannerContainer.classList.add('hidden');
+                if (stopScannerBtn) stopScannerBtn.classList.add('hidden');
+                if (switchCameraBtn) switchCameraBtn.classList.add('hidden');
+            })
+            .catch(err => {
+                console.warn("Stop error:", err.message);
+            });
     }
 }
+
+
+async function switchCamera() {
+    try {
+        // Stop scanner cleanly before switching
+        if (html5Scanner && html5Scanner.getState() === Html5QrcodeScannerState.SCANNING) {
+            await html5Scanner.stop();
+        }
+
+        currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+
+        setTimeout(() => {
+            startScanner();
+        }, 300);
+    } catch (err) {
+        console.error("Failed to switch camera:", err);
+        showToast("Camera switch failed.");
+    }
+}
+
 
 
 // Add this helper function
