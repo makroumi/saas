@@ -63,3 +63,24 @@
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
 }
+
+/* Add these styles to FIX the black bars */
+#scannerVideo > div {
+    position: relative !important;
+    padding-top: 0 !important;
+    height: 100% !important;
+}
+
+#scannerVideo video {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    transform: none !important;
+}
+
+#html5-qrcode-anchor-scan-type-change {
+    display: none !important;
+}
