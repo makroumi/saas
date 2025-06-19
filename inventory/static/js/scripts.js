@@ -44,101 +44,6 @@ const scannerVideo = document.getElementById('scannerVideo');
 const startScannerBtn = document.getElementById('startScannerBtn');
 const stopScannerBtn = document.getElementById('stopScannerBtn');
 const switchCameraBtn = document.getElementById('switchCameraBtn');
-// Test QR codes to try:
-const testCodes = [
-  "https://example.com", 
-  "TEST123456", 
-  "WIFI:S:MyNetwork;T:WPA;P:Password123;;"
-];
-
-// Add this at the TOP of your scripts.js
-document.addEventListener('DOMContentLoaded', function() {
-  // Fix tab switching
-  document.body.addEventListener('click', function(e) {
-    if (e.target.classList.contains('tab-button')) {
-      showTab(e.target.getAttribute('data-tab'));
-    }
-  });
-
-  // Fix header buttons
-  document.body.addEventListener('click', function(e) {
-    if (e.target.id === 'cart-icon' || e.target.id === 'user-icon') {
-      showTab(e.target.id.replace('-icon', ''));
-    }
-  });
-
-  // Prevent form submission refresh
-  const searchForm = document.getElementById('find-product-form');
-  if (searchForm) {
-    searchForm.addEventListener('submit', function(e) {
-      e.preventDefault();
-      findProduct();
-    });
-  }
-});
-
-// Make sure showTab is defined globally
-window.showTab = function(tabName) {
-  // ... your existing showTab implementation ...
-}
-
-// Add DOMContentLoaded wrapper
-d// Replace your scanner code with:
-document.addEventListener('DOMContentLoaded', function() {
-  if (typeof Html5Qrcode === 'function' && document.getElementById("reader")) {
-    const html5QrCode = new Html5Qrcode("reader");
-    html5QrCode.start(
-      { facingMode: "environment" },
-      { 
-        fps: 10,
-        qrbox: 250 
-      },
-      function(decodedText) {
-        console.log("Scanned:", decodedText);
-        // Handle scan result here
-      },
-      function(error) {
-        console.log("Scan error:", error);
-      }
-    ).catch(error => {
-      console.error("Scanner error:", error);
-    });
-  } else {
-    console.log("Scanner not available");
-  }
-});
-
-// Button functionality recovery
-document.addEventListener('DOMContentLoaded', function() {
-  // Delegate all button clicks
-  document.body.addEventListener('click', function(e) {
-    if (e.target.matches('.add-to-cart')) {
-      // Add your cart functionality here
-      console.log('Add to cart clicked');
-    }
-    // Add other button selectors as needed
-  });
-});
-// Replace your scanner initialization with this:
-const html5QrCode = new Html5Qrcode("reader");
-const config = {
-  fps: 15,
-  qrbox: 250,
-  experimentalFeatures: {
-    useBarCodeDetectorIfSupported: true
-  },
-  rememberLastUsedCamera: true,
-  supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
-};
-
-html5QrCode.start(
-  cameraId,
-  config,
-  qrCodeSuccessCallback,
-  qrCodeErrorCallback
-).catch(err => {
-  console.error("Scanner startup failed:", err);
-});
 
 // Temporary data for search suggestions
 const searchData = [
@@ -626,8 +531,8 @@ function hideToast() {
 
 // Barcode Scanner Controls
 let currentCamera = 'environment';
+let html5Scanner = null;
 let scannerActive = false;
-let quaggaReady = false;
 
 // Ensure QuaggaJS is loaded before using
 function ensureQuaggaReady(cb) {
@@ -659,13 +564,11 @@ if (scannerContainer) {
     observer.observe(scannerContainer, { attributes: true });
 }
 
-<<<<<<< HEAD
 let lastCode = null;
 let lastDetectedTime = 0;
 // let scannerActive = false; // Removed duplicate declaration
 let currentCameraIndex = 0;
 let availableCameras = [];
-
 
 async function startScanner() {
     if (scannerActive) return;
@@ -677,22 +580,12 @@ async function startScanner() {
     scannerActive = true;
 
     try {
-        // Get all available cameras
         availableCameras = await Html5Qrcode.getCameras();
         if (availableCameras.length === 0) throw new Error("No cameras found");
 
-        // Try to prefer built-in camera before Camo or virtual
-        const preferredKeywords = ['integrated', 'built-in', 'hd', 'webcam'];
-        const sortedCameras = availableCameras.sort((a, b) => {
-            const aPref = preferredKeywords.some(k => a.label.toLowerCase().includes(k));
-            const bPref = preferredKeywords.some(k => b.label.toLowerCase().includes(k));
-            return bPref - aPref;
-        });
-
-        const cameraId = sortedCameras[currentCameraIndex || 0].id;
+        const cameraId = availableCameras[currentCameraIndex].id;
         console.log("Using camera:", cameraId);
 
-        // Initialize scanner
         html5Scanner = new Html5Qrcode("scannerVideo");
 
         await html5Scanner.start(
@@ -715,70 +608,22 @@ async function startScanner() {
                 const flashOverlay = document.getElementById('flashOverlay');
                 if (flashOverlay) {
                     const ctx = flashOverlay.getContext('2d');
-                    ctx.clearRect(0, 0, flashOverlay.width, flashOverlay.height);
                     ctx.fillStyle = 'rgba(80,255,80,0.4)';
                     ctx.fillRect(0, 0, flashOverlay.width, flashOverlay.height);
                     flashOverlay.style.display = 'block';
-                    setTimeout(() => {
-                        flashOverlay.style.display = 'none';
-                        ctx.clearRect(0, 0, flashOverlay.width, flashOverlay.height);
-                    }, 180);
-=======
-function startScanner() {
-    if (scannerActive) return;
-    
-    ensureQuaggaReady(() => {
-        scannerContainer.classList.remove('hidden');
-        if (stopScannerBtn) stopScannerBtn.classList.remove('hidden');
-        if (switchCameraBtn) switchCameraBtn.classList.remove('hidden');
-        scannerActive = true;
-        
-        // Clear overlays
-        const flashOverlay = document.getElementById('flashOverlay');
-        const frameOverlay = document.getElementById('frameOverlay');
-        if (flashOverlay) {
-            flashOverlay.width = 480;
-            flashOverlay.height = 360;
-            flashOverlay.style.display = 'none';
-        }
-        if (frameOverlay) {
-            frameOverlay.width = 480;
-            frameOverlay.height = 360;
-            const ctx = frameOverlay.getContext('2d', { willReadFrequently: true });
-            ctx.clearRect(0, 0, frameOverlay.width, frameOverlay.height);
-        }
-        
-        Quagga.init({
-            inputStream: {
-                name: 'Live',
-                type: 'LiveStream',
-                target: document.querySelector('#scannerVideo'),
-                constraints: {
-                    facingMode: currentCamera,
-                    width: 480,
-                    height: 360
->>>>>>> parent of 34d54d1 (commit2)
+                    setTimeout(() => flashOverlay.style.display = 'none', 180);
                 }
-            },
-            locator: { patchSize: 'medium', halfSample: false },
-            numOfWorkers: 2,
-            decoder: {
-                readers: [
-                    'ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader',
-                    'code_128_reader', 'code_39_reader', 'code_39_vin_reader',
-                    'codabar_reader', 'i2of5_reader', '2of5_reader', 'code_93_reader'
-                ]
-            },
-            locate: true,
-            frequency: 10
-        }, function(err) {
-            if (err) {
-                showToast('Scanner error: ' + err.message);
+
                 stopScanner();
-                return;
+                barcodeInput.value = decodedText;
+                fetchProductInfo({ preventDefault: () => {} });
+                showToast("Barcode scanned: " + decodedText);
+            },
+            (errorMessage) => {
+                console.warn("Scanner error:", errorMessage);
             }
-<<<<<<< HEAD
         );
+
     } catch (err) {
         console.error("Failed to start scanner:", err);
         showToast("Camera not available or permission denied.");
@@ -789,123 +634,13 @@ function startScanner() {
 
 
 
-
 function stopScanner() {
     if (html5Scanner && scannerActive) {
-        html5Scanner.stop()
-            .then(() => {
-                scannerActive = false;
-                scannerContainer.classList.add('hidden');
-                if (stopScannerBtn) stopScannerBtn.classList.add('hidden');
-                if (switchCameraBtn) switchCameraBtn.classList.add('hidden');
-            })
-            .catch(err => {
-                console.warn("Stop error:", err.message);
-            });
-    }
-}
-
-
-async function switchCamera() {
-    try {
-        // Stop scanner cleanly before switching
-        if (html5Scanner && html5Scanner.getState() === Html5QrcodeScannerState.SCANNING) {
-            await html5Scanner.stop();
-        }
-
-        currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
-
-        setTimeout(() => {
-            startScanner();
-        }, 300);
-    } catch (err) {
-        console.error("Failed to switch camera:", err);
-        showToast("Camera switch failed.");
-    }
-}
-
-
-
-=======
-            Quagga.start();
+        html5Scanner.stop().then(() => {
+            html5Scanner.clear();
+        }).catch(err => {
+            console.warn("Stop error:", err);
         });
-        
-        Quagga.onProcessed(function(result) {
-            const frameOverlay = document.getElementById('frameOverlay');
-            if (frameOverlay) {
-                const ctx = frameOverlay.getContext('2d', { willReadFrequently: true });
-                ctx.clearRect(0, 0, frameOverlay.width, frameOverlay.height);
-                if (result && result.boxes) {
-                    ctx.save();
-                    ctx.strokeStyle = '#00FF88';
-                    ctx.lineWidth = 3;
-                    result.boxes.filter(b => b !== undefined).forEach(box => {
-                        ctx.beginPath();
-                        ctx.moveTo(box[0][0], box[0][1]);
-                        for (let i = 1; i < box.length; i++) {
-                            ctx.lineTo(box[i][0], box[i][1]);
-                        }
-                        ctx.closePath();
-                        ctx.stroke();
-                    });
-                    ctx.restore();
-                }
-                if (result && result.box) {
-                    ctx.save();
-                    ctx.strokeStyle = '#FFD600';
-                    ctx.lineWidth = 4;
-                    ctx.beginPath();
-                    ctx.moveTo(result.box[0][0], result.box[0][1]);
-                    for (let i = 1; i < result.box.length; i++) {
-                        ctx.lineTo(result.box[i][0], result.box[i][1]);
-                    }
-                    ctx.closePath();
-                    ctx.stroke();
-                    ctx.restore();
-                }
-            }
-        });
-        
-        let lastCode = null;
-        let lastDetectedTime = 0;
-        Quagga.onDetected(function(result) {
-            if (!scannerActive) return;
-            const code = result.codeResult && result.codeResult.code;
-            const confidence = result.codeResult && result.codeResult.decodedCodes && result.codeResult.decodedCodes[0] && typeof result.codeResult.decodedCodes[0].error !== 'undefined' ? 1 - result.codeResult.decodedCodes[0].error : 1;
-            
-            const now = Date.now();
-            if (!code || code === lastCode || code.length < 8 || confidence < 0.92 || (now - lastDetectedTime < 800)) return;
-            
-            lastCode = code;
-            lastDetectedTime = now;
-            
-            // Snapshot visual effect
-            const flashOverlay = document.getElementById('flashOverlay');
-            if (flashOverlay) {
-                const ctx = flashOverlay.getContext('2d', { willReadFrequently: true });
-                ctx.clearRect(0, 0, flashOverlay.width, flashOverlay.height);
-                ctx.fillStyle = 'rgba(80,255,80,0.4)';
-                ctx.fillRect(0, 0, flashOverlay.width, flashOverlay.height);
-                flashOverlay.style.display = 'block';
-                setTimeout(() => {
-                    flashOverlay.style.display = 'none';
-                    ctx.clearRect(0, 0, flashOverlay.width, flashOverlay.height);
-                }, 180);
-            }
-            
-            stopScanner();
-            barcodeInput.value = code;
-            fetchProductInfo({ preventDefault: () => {} });
-            showToast('Barcode scanned: ' + code);
-        });
-    });
-}
-
-function stopScanner() {
-    if (window.Quagga && scannerActive) {
-        Quagga.stop();
-        Quagga.offProcessed();
-        Quagga.offDetected();
     }
     scannerActive = false;
     scannerContainer.classList.add('hidden');
@@ -914,14 +649,31 @@ function stopScanner() {
 }
 
 function switchCamera() {
-    currentCamera = (currentCamera === 'environment') ? 'user' : 'environment';
+    if (!availableCameras.length) return;
+    currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+    stopScanner();
+    setTimeout(startScanner, 500);
+}
+
+
+function switchCamera() {
+    if (!availableCameras.length) return;
+    currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+    stopScanner();
+    setTimeout(startScanner, 500);
+}
+
+
+
+function switchCamera() {
+    currentCamera = currentCamera === "environment" ? "user" : "environment";
     if (scannerActive) {
         stopScanner();
-        setTimeout(startScanner, 300);
+        setTimeout(startScanner, 500);
     }
 }
 
->>>>>>> parent of 34d54d1 (commit2)
+
 // Add this helper function
 function adjustStock(barcode, adjustment) {
     fetch('/inventory/adjust-stock', {
@@ -977,54 +729,3 @@ function afterProductAdded() {
     loadInventoryList(); // 👈 after adding
     clearAddProductForm();
 }
-
-function qrCodeErrorCallback(error) {
-  if (error.type === Html5QrcodeErrorTypes.UNKWOWN_ERROR) {
-    console.warn("Scanning error, retrying...", error);
-    // No need to stop scanner for common errors
-  } else {
-    console.error("Critical scanner error:", error);
-    html5QrCode.stop();
-  }
-}
-
-// Update camera selection handler
-document.getElementById('camera-select').addEventListener('change', async function() {
-  if (html5QrCode.isScanning) {
-    await html5QrCode.stop();
-  }
-  
-  // Add video constraints for better focus
-  const constraints = {
-    video: { 
-      deviceId: this.value,
-      focusMode: "continuous"
-    }
-  };
-  
-  startScanner(this.value, constraints);
-});
-
-// Add to your scripts.js
-document.getElementById('qr-file-input').addEventListener('change', e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  
-  Html5Qrcode.scanFile(file)
-    .then(decodedText => {
-      processScanResult(decodedText);
-    })
-    .catch(err => {
-      console.error("File scan failed:", err);
-    });
-});
-
-// Add to scanner initialization
-console.log("Supported capabilities:", Html5Qrcode.getCapabilities());
-
-// Run camera diagnostics
-Html5Qrcode.getCameras().then(cameras => {
-  cameras.forEach(cam => {
-    console.log(`Camera: ${cam.label} | Resolution: ${cam.resolution || 'Unknown'}`);
-  });
-});

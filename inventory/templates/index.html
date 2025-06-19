@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventory Management</title>
@@ -133,24 +132,12 @@
                                 <i class="fas fa-camera mr-2"></i>Start Scanner
                             </button>
                         </div>
-                        <!-- Add scanning instructions near the scanner -->
-<div class="scanner-guide">
-  <p class="text-yellow-500 font-bold">Scanning Tips:</p>
-  <ul class="list-disc pl-5 text-white">
-    <li>Ensure good lighting</li>
-    <li>Hold steady 15-30 cm from camera</li>
-    <li>Align QR code with frame</li>
-  </ul>
-</div>
-
-<!-- Add focus indicator -->
-<div id="scanner-frame" class="absolute border-4 border-green-500"></div>
                         <!-- Barcode Scanner Modal -->
                         <div id="scannerContainer" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-40">
                             <div class="bg-white rounded-lg shadow-lg p-0 flex flex-col items-center relative" style="width:500px;">
                                 <div class="mb-2 text-lg font-semibold text-gray-800">Scan Barcode</div>
                                 <div class="relative" style="width:480px;height:360px;overflow:hidden;">
-                                    <div id="scannerVideo" class="w-full max-w-full aspect-video bg-black overflow-hidden rounded-lg"></div>
+                                    <div id="scannerVideo" style="width:480px;height:360px;background:#000;overflow:hidden;"></div>
                                     <canvas id="frameOverlay" style="position:absolute;top:0;left:0;width:480px;height:360px;pointer-events:none;"></canvas>
                                     <canvas id="flashOverlay" style="position:absolute;top:0;left:0;width:480px;height:360px;pointer-events:none;display:none;"></canvas>
                                 </div>
@@ -184,7 +171,7 @@
                         <!-- Product Info Display -->
                         <div id="productInfoSection" class="hidden mt-6 bg-white p-4 rounded-lg border border-gray-200">
                             <div class="flex items-start space-x-4">
-                                <img id="productImage" src="https://via.placeholder.com/80/80" alt="Product" class="w-20 h-20 object-contain rounded border border-gray-200">
+                                <img id="productImage" src="https://via.placeholder.com/80" alt="Product" class="w-20 h-20 object-contain rounded border border-gray-200">
                                 <div class="flex-1">
                                     <h3 id="productName" class="font-medium text-gray-900">Product Name</h3>
                                     <p id="productSKU" class="text-sm text-gray-500">SKU: ABC123</p>
@@ -455,7 +442,7 @@
                                 <div class="p-4 hover:bg-gray-50">
                                     <div class="flex items-start">
                                         <div class="flex-shrink-0 h-10 w-10">
-                                            <img class="h-10 w-10 rounded" src="https://picsum.photos/80/80" alt="">
+                                            <img class="h-10 w-10 rounded" src="https://via.placeholder.com/40" alt="">
                                         </div>
                                         <div class="ml-4 flex-1">
                                             <div class="flex items-center justify-between">
@@ -490,7 +477,7 @@
                                 <div class="p-4 hover:bg-gray-50">
                                     <div class="flex items-start">
                                         <div class="flex-shrink-0 h-10 w-10">
-                                            <img class="h-10 w-10 rounded" src="https://picsum.photos/40/40" alt="">
+                                            <img class="h-10 w-10 rounded" src="https://via.placeholder.com/40" alt="">
                                         </div>
                                         <div class="ml-4 flex-1">
                                             <div class="flex items-center justify-between">
@@ -526,7 +513,7 @@
                                 <div class="p-4 hover:bg-gray-50">
                                     <div class="flex items-start">
                                         <div class="flex-shrink-0 h-10 w-10">
-                                            <img class="h-10 w-10 rounded" src="https://picsum.photos/40/40" alt="">
+                                            <img class="h-10 w-10 rounded" src="https://via.placeholder.com/40" alt="">
                                         </div>
                                         <div class="ml-4 flex-1">
                                             <div class="flex items-center justify-between">
@@ -552,7 +539,7 @@
                                 <div class="p-4 hover:bg-gray-50">
                                     <div class="flex items-start">
                                         <div class="flex-shrink-0 h-10 w-10">
-                                            <img class="h-10 w-10 rounded" src="https://picsum.photos/40/40" alt="">
+                                            <img class="h-10 w-10 rounded" src="https://via.placeholder.com/40" alt="">
                                         </div>
                                         <div class="ml-4 flex-1">
                                             <div class="flex items-center justify-between">
@@ -596,7 +583,7 @@
                                 <!-- Product Info -->
                                 <div id="orderProductInfo" class="hidden bg-gray-50 p-3 rounded-md">
                                     <div class="flex items-center space-x-3">
-                                        <img id="orderProductImage" src="https://picsum.photos/50/50" alt="" class="h-12 w-12 rounded border border-gray-200">
+                                        <img id="orderProductImage" src="https://via.placeholder.com/50" alt="" class="h-12 w-12 rounded border border-gray-200">
                                         <div>
                                             <div class="flex space-x-4">
                                                 <div>
@@ -722,7 +709,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                     <!-- Left Column - Product Image -->
                     <div class="md:col-span-1">
-                        <img id="detailsProductImage" src="https://picsum.photos/300/300" alt="Product" class="w-full h-auto rounded-lg border border-gray-200">
+                        <img id="detailsProductImage" src="https://via.placeholder.com/300" alt="Product" class="w-full h-auto rounded-lg border border-gray-200">
                     </div>
                     
                     <!-- Right Column - Product Details -->
@@ -906,14 +893,11 @@
         </div>
     </div>
 
-
     <!-- html5-qrcode CDN (required for barcode scanning) -->
     <!-- Html5Qrcode CDN -->
-    
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
 
-    <!-- QuaggaJS CDN (required for barcode scanning) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
-    <script src="JS/scripts.js"></script>
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
 </body>
 </html>
