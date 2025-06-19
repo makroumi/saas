@@ -563,12 +563,25 @@ const observer = new MutationObserver(function(mutations) {
 if (scannerContainer) {
     observer.observe(scannerContainer, { attributes: true });
 }
+// ... existing code above ...
+
+// ... existing code above ...
+
+// ... existing code above ...
+
+// ... existing code above ...
+
+// ... existing code above ...
+
+// ... existing code above ...
+
+// ... existing code above ...
 
 let lastCode = null;
 let lastDetectedTime = 0;
-// let scannerActive = false; // Removed duplicate declaration
 let currentCameraIndex = 0;
 let availableCameras = [];
+let cameraErrorCount = 0; // Track consecutive errors
 
 async function startScanner() {
     if (scannerActive) return;
@@ -578,26 +591,36 @@ async function startScanner() {
     if (stopScannerBtn) stopScannerBtn.classList.remove('hidden');
     if (switchCameraBtn) switchCameraBtn.classList.remove('hidden');
     scannerActive = true;
+    cameraErrorCount = 0; // Reset error count on new start
 
     try {
         availableCameras = await Html5Qrcode.getCameras();
         if (availableCameras.length === 0) throw new Error("No cameras found");
 
+        // Sort cameras: prioritize device cameras, put Camo last
+        availableCameras.sort((a, b) => {
+            const aIsCamo = a.label.toLowerCase().includes('camo');
+            const bIsCamo = b.label.toLowerCase().includes('camo');
+            return aIsCamo ? 1 : bIsCamo ? -1 : 0;
+        });
+
+        // Skip Camo in production
+        if (isProduction() && availableCameras[currentCameraIndex].label.toLowerCase().includes('camo')) {
+            currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+        }
+
         const cameraId = availableCameras[currentCameraIndex].id;
-        console.log("Using camera:", cameraId);
+        console.log("Using camera:", cameraId, availableCameras[currentCameraIndex].label);
 
         html5Scanner = new Html5Qrcode("scannerVideo");
 
         await html5Scanner.start(
-            { deviceId: { exact: cameraId } },
+            cameraId,  // Use simplified camera selection
             {
                 fps: 10,
-                qrbox: { width: 250, height: 250 },
-                aspectRatio: 1.77,
-                experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-                supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
+                aspectRatio: 1.777778 // 16:9 aspect ratio
             },
-            (decodedText, result) => {
+            (decodedText) => {
                 const now = Date.now();
                 if (!decodedText || decodedText === lastCode || decodedText.length < 8 || now - lastDetectedTime < 800) return;
 
@@ -624,56 +647,87 @@ async function startScanner() {
             }
         );
 
+        // Fix video aspect ratio
+        const videoElement = scannerVideo.querySelector('video');
+        if (videoElement) {
+            videoElement.style.objectFit = 'cover';
+        }
     } catch (err) {
-        console.error("Failed to start scanner:", err);
-        showToast("Camera not available or permission denied.");
-        stopScanner();
+        console.error("Failed to start camera:", err);
+        cameraErrorCount++;
+        
+        if (cameraErrorCount < availableCameras.length) {
+            // Try next camera automatically
+            currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+            setTimeout(startScanner, 500);
+        } else {
+            showToast("Camera error: " + (err.message || "Failed to start any camera"));
+            stopScanner();
+        }
     }
 }
 
-
-
-
 function stopScanner() {
-    if (html5Scanner && scannerActive) {
-        html5Scanner.stop().then(() => {
-            html5Scanner.clear();
-        }).catch(err => {
-            console.warn("Stop error:", err);
+    scannerActive = false; // Set immediately to prevent race conditions
+    
+    if (html5Scanner) {
+        html5Scanner.stop().catch(err => {
+            // Ignore "not running" errors
+            if (!err.message.includes('not running')) {
+                console.warn("Stop error:", err);
+            }
         });
     }
-    scannerActive = false;
+    
     scannerContainer.classList.add('hidden');
     if (stopScannerBtn) stopScannerBtn.classList.add('hidden');
     if (switchCameraBtn) switchCameraBtn.classList.add('hidden');
 }
 
 function switchCamera() {
-    if (!availableCameras.length) return;
-    currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
-    stopScanner();
-    setTimeout(startScanner, 500);
-}
-
-
-function switchCamera() {
-    if (!availableCameras.length) return;
-    currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
-    stopScanner();
-    setTimeout(startScanner, 500);
-}
-
-
-
-function switchCamera() {
-    currentCamera = currentCamera === "environment" ? "user" : "environment";
-    if (scannerActive) {
-        stopScanner();
-        setTimeout(startScanner, 500);
+    if (!availableCameras.length) {
+        showToast("No cameras available");
+        return;
     }
+
+    // In production, always skip camo devices.
+    if (isProduction()) {
+        let nextIndex = (currentCameraIndex + 1) % availableCameras.length;
+        let iterations = 0;
+        while (availableCameras[nextIndex].label.toLowerCase().includes('camo') && iterations < availableCameras.length) {
+            nextIndex = (nextIndex + 1) % availableCameras.length;
+            iterations++;
+        }
+        currentCameraIndex = nextIndex;
+    } else {
+        // In development mode, if we're currently on a camo camera, switch to first available non-camo.
+        if (availableCameras[currentCameraIndex].label.toLowerCase().includes('camo')) {
+            const nonCamoIndex = availableCameras.findIndex(cam =>
+                !cam.label.toLowerCase().includes('camo') &&
+                !cam.label.toLowerCase().includes('virtual')
+            );
+            // If a non-camo camera is found, use it; otherwise, fallback to cycling normally.
+            currentCameraIndex = nonCamoIndex > -1 ? nonCamoIndex : (currentCameraIndex + 1) % availableCameras.length;
+        } else {
+            // If the current camera is not camo, then check if a camo is available.
+            const camoIndex = availableCameras.findIndex(cam => 
+                cam.label.toLowerCase().includes('camo')
+            );
+            // If found, switch to the camo camera; otherwise, cycle normally.
+            currentCameraIndex = camoIndex > -1 ? camoIndex : (currentCameraIndex + 1) % availableCameras.length;
+        }
+    }
+
+    stopScanner();
+    setTimeout(startScanner, 500);
 }
 
+function isProduction() {
+    return !window.location.host.includes('localhost') && 
+           !window.location.host.includes('127.0.0.1');
+}
 
+// ... existing code below ...
 // Add this helper function
 function adjustStock(barcode, adjustment) {
     fetch('/inventory/adjust-stock', {
