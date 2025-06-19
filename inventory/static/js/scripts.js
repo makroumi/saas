@@ -570,62 +570,57 @@ let lastDetectedTime = 0;
 let currentCameraIndex = 0;
 let availableCameras = [];
 
-// KEEP your existing variables:
-
-// let scannerActive = false; // Already declared above
-// let html5Scanner = null;   // Already declared above
-
-// MODIFIED startScanner (only camera selection changed)
 async function startScanner() {
     if (scannerActive) return;
-    scannerActive = true;
+    console.log("Starting scanner...");
+
     scannerContainer.classList.remove('hidden');
     if (stopScannerBtn) stopScannerBtn.classList.remove('hidden');
     if (switchCameraBtn) switchCameraBtn.classList.remove('hidden');
+    scannerActive = true;
 
     try {
         availableCameras = await Html5Qrcode.getCameras();
         if (availableCameras.length === 0) throw new Error("No cameras found");
 
-        // SIMPLIFIED camera selection - ONLY CHANGE MADE
-        const cameraToUse = availableCameras[currentCameraIndex % availableCameras.length];
-        console.log("Using camera:", cameraToUse.label);
-
-        // STOP any existing scanner instance
-        if (html5Scanner) {
-            await html5Scanner.stop().catch(console.warn);
-        }
+        const cameraId = availableCameras[currentCameraIndex].id;
+        console.log("Using camera:", cameraId);
 
         html5Scanner = new Html5Qrcode("scannerVideo");
-        
+
         await html5Scanner.start(
-            { deviceId: { exact: cameraToUse.id } },
+            { deviceId: { exact: cameraId } },
             {
                 fps: 10,
                 qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.77,
                 experimentalFeatures: { useBarCodeDetectorIfSupported: true },
                 supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
             },
             (decodedText, result) => {
-                // YOUR EXISTING SCAN HANDLING CODE - UNTOUCHED
                 const now = Date.now();
                 if (!decodedText || decodedText === lastCode || decodedText.length < 8 || now - lastDetectedTime < 800) return;
+
                 lastCode = decodedText;
                 lastDetectedTime = now;
-                
-                // Flash effect (keep your existing code)
-                // ... 
-                
+
+                // Flash effect
+                const flashOverlay = document.getElementById('flashOverlay');
+                if (flashOverlay) {
+                    const ctx = flashOverlay.getContext('2d');
+                    ctx.fillStyle = 'rgba(80,255,80,0.4)';
+                    ctx.fillRect(0, 0, flashOverlay.width, flashOverlay.height);
+                    flashOverlay.style.display = 'block';
+                    setTimeout(() => flashOverlay.style.display = 'none', 180);
+                }
+
                 stopScanner();
                 barcodeInput.value = decodedText;
                 fetchProductInfo({ preventDefault: () => {} });
                 showToast("Barcode scanned: " + decodedText);
             },
             (errorMessage) => {
-                // Suppress common non-critical errors
-                if (!errorMessage.includes("No MultiFormat Readers")) {
-                    console.warn("Scanner error:", errorMessage);
-                }
+                console.warn("Scanner error:", errorMessage);
             }
         );
 
@@ -636,47 +631,48 @@ async function startScanner() {
     }
 }
 
-// FIXED switchCamera function
-function switchCamera() {
-    if (!availableCameras || availableCameras.length < 2) return;
-    
-    // Increment index and wrap around
-    currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
-    
-    // Stop then restart with proper resource release
-    stopScanner().then(() => {
-        // Essential delay for camera resource release
-        setTimeout(startScanner, 300);
-    });
-}
 
-// IMPROVED stopScanner (preserves your logic)
-async function stopScanner() {
-    if (!scannerActive) return;
-    
+
+
+function stopScanner() {
+    if (html5Scanner && scannerActive) {
+        html5Scanner.stop().then(() => {
+            html5Scanner.clear();
+        }).catch(err => {
+            console.warn("Stop error:", err);
+        });
+    }
     scannerActive = false;
     scannerContainer.classList.add('hidden');
     if (stopScannerBtn) stopScannerBtn.classList.add('hidden');
     if (switchCameraBtn) switchCameraBtn.classList.add('hidden');
-    
-    if (html5Scanner) {
-        try {
-            await html5Scanner.stop();
-        } catch (err) {
-            console.warn("Stop error:", err);
-        }
+}
+
+function switchCamera() {
+    if (!availableCameras.length) return;
+    currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+    stopScanner();
+    setTimeout(startScanner, 500);
+}
+
+
+function switchCamera() {
+    if (!availableCameras.length) return;
+    currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
+    stopScanner();
+    setTimeout(startScanner, 500);
+}
+
+
+
+function switchCamera() {
+    currentCamera = currentCamera === "environment" ? "user" : "environment";
+    if (scannerActive) {
+        stopScanner();
+        setTimeout(startScanner, 500);
     }
 }
-// // Keep your original switchCamera function exactly as is
-// function switchCamera() {
-//     if (!availableCameras || availableCameras.length < 2) return;
-    
-//     currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
-    
-//     stopScanner().then(() => {
-//         startScanner();
-//     });
-// }
+
 
 // Add this helper function
 function adjustStock(barcode, adjustment) {
