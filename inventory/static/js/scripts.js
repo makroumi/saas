@@ -43,7 +43,7 @@ const scannerContainer = document.getElementById('scannerContainer');
 const scannerVideo = document.getElementById('scannerVideo');
 const startScannerBtn = document.getElementById('startScannerBtn');
 const stopScannerBtn = document.getElementById('stopScannerBtn');
-const switchCameraBtn = document.getElementById('switchCameraBtn');
+
 
 // Temporary data for search suggestions
 const searchData = [
@@ -354,7 +354,7 @@ function searchInventory(query = '') {
           <td class="px-6 py-4 whitespace-nowrap">
             <div class="flex items-center">
               <div class="flex-shrink-0 h-10 w-10">
-                <img class="h-10 w-10 rounded" src="${item.image_url || 'https://via.placeholder.com/40'}" alt="">
+                <img class="h-10 w-10 rounded" src="${item.image_url || 'https://picsum.photos/40'}" alt="">
               </div>
               <div class="ml-4">
                 <div class="text-sm font-medium text-gray-900">${item.name || 'Unnamed Product'}</div>
@@ -401,33 +401,227 @@ function selectSuggestion(sku) {
     }, 800);
 }
 
+// Called when a product is scanned to show its details.
 function showProductDetails(barcode) {
-    fetch(`/inventory/search?q=${barcode}`)
+  fetch(`/inventory/search?q=${barcode}`)
     .then(res => res.json())
     .then(data => {
-        if (!data || data.length === 0) return;
+      if (!data || data.length === 0) return;
+      const p = data[0];
 
-        const p = data[0];
+      // Populate the product details modal with the fetched product data.
+      document.getElementById('detailsProductName').textContent = p.name || 'Unnamed Product';
+      document.getElementById('detailsProductSKU').textContent = `SKU: ${p.barcode}`;
+      document.getElementById('detailsProductCategory').textContent = p.category || '-';
+      document.getElementById('detailsCurrentStock').textContent = p.quantity || '0';
+      document.getElementById('detailsReorderThreshold').textContent = p.threshold || '-';
+      document.getElementById('detailsUnitCost').textContent = p.cost ? `$${p.cost}` : '-';
+      document.getElementById('detailsSellingPrice').textContent = p.price ? `$${p.price}` : '-';
+      document.getElementById('detailsLastUpdated').textContent = new Date().toLocaleString();
+      document.getElementById('detailsExpiryDate').textContent = p.expiry || '-';
+      document.getElementById('detailsDescription').textContent = p.description || 'No description available.';
+      
+      const img = document.getElementById('detailsProductImage');
+      img.src = p.image_url || 'https://picsum.photos/80';
+      img.alt = p.name || 'Product Image';
 
-        document.getElementById('detailsProductName').textContent = p.name || 'Unnamed Product';
-        document.getElementById('detailsProductSKU').textContent = `SKU: ${p.barcode}`;
-        document.getElementById('detailsProductCategory').textContent = p.category || '-';
-        document.getElementById('detailsCurrentStock').textContent = p.quantity || '0';
-        document.getElementById('detailsReorderThreshold').textContent = p.threshold || '-';
-        document.getElementById('detailsUnitCost').textContent = p.cost ? `$${p.cost}` : '-';
-        document.getElementById('detailsSellingPrice').textContent = p.price ? `$${p.price}` : '-';
-        document.getElementById('detailsLastUpdated').textContent = new Date().toLocaleString();
-        document.getElementById('detailsExpiryDate').textContent = p.expiry || '-';
-        document.getElementById('detailsDescription').textContent = p.description || 'No description available.';
+      // Save the current barcode for later use.
+      window.currentBarcode = p.barcode;
 
-        const img = document.getElementById('detailsProductImage');
-        img.src = p.image_url || 'https://via.placeholder.com/80';
-        img.alt = p.name || 'Product Image';
+      // Log the scan event so that the current timestamp and stock are recorded.
+      logProductScan(p.barcode, p.quantity);
 
-        productDetailsModal.classList.remove('hidden');
+      // Load the stock history for this product into the chart.
+      // The range comes from your dropdown (e.g. "day", "week", etc.).
+      loadStockHistory(p.barcode, document.getElementById('stockHistoryRange').value);
+
+      // Show the product details modal.
+      productDetailsModal.classList.remove('hidden');
+    })
+    .catch(err => console.error('Error fetching product details:', err));
+}
+
+
+// Logs a scan event by sending the current stock to the Flask endpoint.
+function logProductScan(barcode, currentStock) {
+  fetch('/inventory/log-scan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ barcode: barcode, current_qty: currentStock })
+  })
+    .then(res => res.json())
+    .then(data => {
+      console.log('Scan log response:', data);
+      // Optionally refresh the chart after logging.
+      // (This call may be redundant if you're already calling loadStockHistory() in showProductDetails.)
+      loadStockHistory(barcode, document.getElementById('stockHistoryRange').value);
+    })
+    .catch(err => {
+      console.error('Error logging scan:', err);
     });
 }
 
+
+// This function generates simulated data in case no logged history exists.
+// (Useful for development until real stock history accumulates.)
+function generateSimulatedStockHistory(range) {
+  const points = [];
+  const now = new Date();
+
+  switch (range) {
+    case '24hours':
+      for (let i = 0; i < 12; i++) {
+        const date = new Date(now.getTime() - ((11 - i) * 2 * 60 * 60 * 1000));
+        points.push({ date: date.toISOString(), quantity: Math.floor(Math.random() * 100) });
+      }
+      break;
+    case 'day':
+      for (let i = 0; i < 6; i++) {
+        const date = new Date(now.getTime() - ((5 - i) * 4 * 60 * 60 * 1000));
+        points.push({ date: date.toISOString(), quantity: Math.floor(Math.random() * 100) });
+      }
+      break;
+    case 'week':
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(now.getTime() - ((6 - i) * 24 * 60 * 60 * 1000));
+        points.push({ date: date.toISOString(), quantity: Math.floor(Math.random() * 100) });
+      }
+      break;
+    case 'month':
+      for (let i = 0; i < 30; i++) {
+        const date = new Date(now);
+        date.setDate(now.getDate() - (29 - i));
+        points.push({ date: date.toISOString(), quantity: Math.floor(Math.random() * 100) });
+      }
+      break;
+    default:
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(now.getTime() - ((6 - i) * 24 * 60 * 60 * 1000));
+        points.push({ date: date.toISOString(), quantity: Math.floor(Math.random() * 100) });
+      }
+      break;
+  }
+
+  return points;
+}
+
+
+// Loads stock history data from your Flask endpoint and updates (or creates) the chart.
+function loadStockHistory(barcode, range) {
+  fetch(`/inventory/stock-history?barcode=${barcode}`)
+    .then(res => res.json())
+    .then(data => {
+      // Check if the returned data is valid – if not, use simulated data.
+      if (!Array.isArray(data) || data.length === 0) {
+        console.warn("No stock history found, using simulated data.");
+        data = generateSimulatedStockHistory(range);
+      }
+      
+      // Map the fetched (or simulated) data into arrays.
+      const labels = data.map(record => record.date);
+      const quantities = data.map(record => record.quantity);
+      
+      const canvas = document.getElementById("stockHistoryChart");
+      if (!canvas) {
+        console.error("Could not find stockHistoryChart canvas.");
+        return;
+      }
+      const ctx = canvas.getContext("2d");
+      
+      // If a chart already exists, try to update its data; otherwise create a new chart.
+      if (window.stockHistoryChart) {
+        // If the chart instance is valid, update its data.
+        if (window.stockHistoryChart.data &&
+            window.stockHistoryChart.data.datasets &&
+            window.stockHistoryChart.data.datasets.length > 0) {
+          window.stockHistoryChart.data.labels = labels;
+          window.stockHistoryChart.data.datasets[0].data = quantities;
+          window.stockHistoryChart.update();
+        } else {
+          console.error("Chart instance data structure is invalid. Recreating chart.");
+          // Destroy chart if possible.
+          if (typeof window.stockHistoryChart.destroy === "function") {
+            window.stockHistoryChart.destroy();
+          } else {
+            console.warn("Chart instance does not have a destroy method; recreating without destroying.");
+          }
+          window.stockHistoryChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: labels,
+              datasets: [{
+                label: 'Stock Quantity',
+                data: quantities,
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1,
+                fill: false
+              }]
+            },
+            options: {
+              scales: {
+                x: {
+                  type: 'time',
+                  time: {
+                    parser: 'YYYY-MM-DDTHH:mm:ss.SSSZ',
+                    tooltipFormat: 'll HH:mm',
+                    unit: 'day',
+                    displayFormats: {
+                      day: 'MMM D'
+                    }
+                  },
+                  title: { display: true, text: 'Date' }
+                },
+                y: {
+                  beginAtZero: true,
+                  title: { display: true, text: 'Quantity' }
+                }
+              }
+            }
+          });
+        }
+      } else {
+        // No chart exists yet – create a new one.
+        window.stockHistoryChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Stock Quantity',
+              data: quantities,
+              backgroundColor: 'rgba(75, 192, 192, 0.2)',
+              borderColor: 'rgba(75, 192, 192, 1)',
+              borderWidth: 1,
+              fill: false
+            }]
+          },
+          options: {
+            scales: {
+              x: {
+                type: 'time',
+                time: {
+                  parser: 'YYYY-MM-DDTHH:mm:ss.SSSZ',
+                  tooltipFormat: 'll HH:mm',
+                  unit: 'day',
+                  displayFormats: {
+                    day: 'MMM D'
+                  }
+                },
+                title: { display: true, text: 'Date' }
+              },
+              y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Quantity' }
+              }
+            }
+          }
+        });
+      }
+    })
+    .catch(err => {
+      console.error("Failed to load stock history:", err);
+    });
+}
 
 function closeProductDetails() {
     productDetailsModal.classList.add('hidden');
@@ -563,19 +757,7 @@ const observer = new MutationObserver(function(mutations) {
 if (scannerContainer) {
     observer.observe(scannerContainer, { attributes: true });
 }
-// ... existing code above ...
 
-// ... existing code above ...
-
-// ... existing code above ...
-
-// ... existing code above ...
-
-// ... existing code above ...
-
-// ... existing code above ...
-
-// ... existing code above ...
 
 let lastCode = null;
 let lastDetectedTime = 0;
@@ -727,8 +909,8 @@ function isProduction() {
            !window.location.host.includes('127.0.0.1');
 }
 
-// ... existing code below ...
-// Add this helper function
+
+// helper function
 function adjustStock(barcode, adjustment) {
     fetch('/inventory/adjust-stock', {
         method: 'POST',
@@ -754,26 +936,44 @@ function adjustStock(barcode, adjustment) {
     });
 }
 
+// Load the full inventory list with all product details plus the action buttons
 function loadInventoryList() {
-    fetch('/inventory/count')
-      .then(res => res.json())
-      .then(data => {
-          const list = document.getElementById('inventoryList');
-          list.innerHTML = '';
-          data.forEach(item => {
-              const row = document.createElement('tr');
-              row.innerHTML = `
-                <td>${item.barcode}</td>
-                <td>${item.name}</td>
-                <td>${item.quantity}</td>
-                <td>${item.price}</td>
-                <td>${item.category || ''}</td>
-              `;
-              list.appendChild(row);
-          });
+  fetch('/inventory/count')
+    .then(res => res.json())
+    .then(data => {
+      // Ensure your HTML table's <tbody> for full inventory has the id "inventoryList"
+      const tbody = document.getElementById('searchResultsBody');
+        // Ensure the search results table becomes visible
+      document.getElementById('searchResultsTable').classList.remove('hidden');
+      tbody.innerHTML = '';
+
+      data.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.barcode}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.name}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.quantity}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.price}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.category || ''}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+            <button onclick="showProductDetails('${item.barcode}')" class="text-indigo-600 hover:text-indigo-900 mr-3">Details</button>
+            <button onclick="showTab('place-order')" class="text-green-600 hover:text-green-900">Order</button>
+          </td>
+        `;
+        tbody.appendChild(row);
       });
+    })
+    .catch(error => {
+      console.error('Error loading inventory list:', error);
+      showToast('Failed to load inventory list. Please try again.');
+    });
 }
-// Load inventory list on page load
+
+// Called after a product is added so the inventory updates immediately
+function afterProductAdded() {
+  loadInventoryList();
+  clearAddProductForm();
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     loadInventoryList(); // 👈 on page load
@@ -782,4 +982,62 @@ document.addEventListener('DOMContentLoaded', () => {
 function afterProductAdded() {
     loadInventoryList(); // 👈 after adding
     clearAddProductForm();
+}
+
+function toggleEditProduct() {
+  const isEditing = window.isEditing || false;
+  const fields = [
+    'detailsProductName',
+    'detailsProductCategory',
+    'detailsCurrentStock',
+    'detailsReorderThreshold',
+    'detailsUnitCost',
+    'detailsSellingPrice',
+    'detailsExpiryDate',
+    'detailsDescription'
+  ];
+
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.contentEditable = !isEditing;
+    if (el) el.classList.toggle('bg-yellow-50', !isEditing);
+  });
+
+  const btn = document.getElementById('toggleEditBtn');
+  if (!isEditing) {
+    btn.innerHTML = '<i class="fas fa-save mr-2"></i>Save Changes';
+  } else {
+    btn.innerHTML = '<i class="fas fa-edit mr-2"></i>Edit Product';
+    saveEditedProduct(); // on save
+  }
+
+  window.isEditing = !isEditing;
+}
+
+function saveEditedProduct() {
+  const product = {
+    barcode: window.currentBarcode,
+    name: document.getElementById('detailsProductName').textContent.trim(),
+    category: document.getElementById('detailsProductCategory').textContent.trim(),
+    quantity: parseInt(document.getElementById('detailsCurrentStock').textContent.trim()) || 0,
+    threshold: parseInt(document.getElementById('detailsReorderThreshold').textContent.trim()) || 0,
+    cost: parseFloat(document.getElementById('detailsUnitCost').textContent.replace(/[^0-9.]/g, '')) || 0,
+    price: parseFloat(document.getElementById('detailsSellingPrice').textContent.replace(/[^0-9.]/g, '')) || 0,
+    expiry: document.getElementById('detailsExpiryDate').textContent.trim(),
+    description: document.getElementById('detailsDescription').textContent.trim()
+  };
+
+  fetch('/inventory/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(product)
+  })
+    .then(res => res.json())
+    .then(data => {
+      console.log('Saved:', data);
+      if (data.status === 'ok') {
+        loadStockHistory(product.barcode, document.getElementById('stockHistoryRange').value);
+      }
+    })
+    .catch(err => console.error('Failed to save changes:', err));
 }

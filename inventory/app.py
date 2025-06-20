@@ -11,6 +11,7 @@ from utils.barcode import lookup_barcode
 from utils.analysis import process_data
 import requests
 from datetime import datetime
+import csv
 
 warnings.filterwarnings('ignore')
 
@@ -31,7 +32,64 @@ def fuzzy_column_match(col, aliases):
 @app.route('/inventory/count', methods=['GET'])
 def inventory_count():
     df = load_inventory(app.config['INVENTORY_FILE'])
+    # Replace NaN with an empty string (or another valid value, like 0 or null)
+    df = df.fillna('')
     return jsonify(df.to_dict(orient='records'))
+
+
+
+# @app.route('/inventory/adjust-stock', methods=['POST'])
+# def adjust_stock():
+#     try:
+#         data = request.json
+#         barcode = data.get('barcode')  # Make sure the barcode is defined here
+#         adjustment = int(data.get('adjustment', 0))
+        
+#         # Load inventory (using your existing load_inventory function)
+#         def load_inventory(filepath):
+#             if os.path.exists(filepath):
+#                 return pd.read_csv(filepath, dtype=str).fillna('')
+#             return pd.DataFrame(columns=[
+#                 'barcode','name','category','quantity','cost','price','expiry',
+#                 'threshold','distributor','manufacturer','synced','image_url'
+#             ])
+#         df = load_inventory(app.config['INVENTORY_FILE'])
+        
+#         # Check if product exists
+#         if barcode not in df['barcode'].values:
+#             return jsonify({
+#                 'status': 'error',
+#                 'message': f'Product with barcode {barcode} not found. Add it first.'
+#             }), 404
+        
+#         # Find and update the product
+#         index = df.index[df['barcode'] == barcode].tolist()[0]
+#         current_qty = int(df.at[index, 'quantity'])
+#         new_qty = max(0, current_qty + adjustment)
+#         df.at[index, 'quantity'] = str(new_qty)
+        
+#         # Save changes to the inventory CSV
+#         save_inventory(app.config['INVENTORY_FILE'], df)
+        
+#         # Log stock adjustment to history CSV
+#         # Import csv module if not already imported at the top of your file
+#         import csv
+#         with open("data/stock_history.csv", mode="a", newline="") as file:
+#             writer = csv.writer(file)
+#             writer.writerow([barcode, datetime.now().isoformat(), new_qty])
+        
+#         return jsonify({
+#             'status': 'success',
+#             'new_quantity': new_qty,
+#             'message': f'Stock updated to {new_qty}'
+#         })
+        
+#     except Exception as e:
+#         return jsonify({
+#             'status': 'error',
+#             'message': str(e)
+#         }), 500
+
 
 # Update the search function to handle barcodes properly
 @app.route('/inventory/search', methods=['GET'])
@@ -209,32 +267,37 @@ def adjust_stock():
         barcode = data.get('barcode')
         adjustment = int(data.get('adjustment', 0))
         
-        # Load inventory
-        def load_inventory(filepath):
-            if os.path.exists(filepath):
-                return pd.read_csv(filepath, dtype=str).fillna('')
-            return pd.DataFrame(columns=[
-        'barcode','name','category','quantity','cost','price','expiry',
-        'threshold','distributor','manufacturer','synced','image_url'
-    ])
-        df = load_inventory(app.config['INVENTORY_FILE'])
-
+        # Load inventory data.
+        # If you already import and use load_inventory from your utils, you can substitute that here.
+        if os.path.exists(app.config['INVENTORY_FILE']):
+            df = pd.read_csv(app.config['INVENTORY_FILE'], dtype=str).fillna('')
+        else:
+            df = pd.DataFrame(columns=[
+                'barcode','name','category','quantity','cost','price','expiry',
+                'threshold','distributor','manufacturer','synced','image_url'
+            ])
         
-        # Check if product exists
+        # Check if the product exists:
         if barcode not in df['barcode'].values:
             return jsonify({
                 'status': 'error',
                 'message': f'Product with barcode {barcode} not found. Add it first.'
             }), 404
         
-        # Find and update the product
+        # Find and update the product's quantity:
         index = df.index[df['barcode'] == barcode].tolist()[0]
         current_qty = int(df.at[index, 'quantity'])
         new_qty = max(0, current_qty + adjustment)
         df.at[index, 'quantity'] = str(new_qty)
         
-        # Save changes
+        # Save the updated inventory.
         save_inventory(app.config['INVENTORY_FILE'], df)
+        
+        # Log the stock adjustment to a history CSV.
+        import csv
+        with open("data/stock_history.csv", mode="a", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow([barcode, datetime.now().isoformat(), new_qty])
         
         return jsonify({
             'status': 'success',
@@ -247,6 +310,7 @@ def adjust_stock():
             'status': 'error',
             'message': str(e)
         }), 500
+
 
 @app.route('/')
 def index():
@@ -265,6 +329,58 @@ def notebook_demo():
     print("---- LOOKUP ----", lookup_barcode('056800513943'))
     df = pd.DataFrame([{'date':'2024-01-01','product':'A','quantity':2,'price':10}])
     print("---- KPI ----", process_data(df)['kpis'])
+
+
+@app.route('/inventory/stock-history', methods=['GET'])
+def stock_history():
+    barcode = request.args.get('barcode')
+    if not barcode:
+        return jsonify({'error': 'Barcode parameter is required.'}), 400
+
+    history = []
+    # Check if the history file exists
+    if os.path.exists("data/stock_history.csv"):
+        with open("data/stock_history.csv", mode="r", newline="") as file:
+            reader = csv.reader(file)
+            for row in reader:
+                # Expect each row to have at least 3 fields: barcode, date, quantity
+                if len(row) >= 3 and row[0] == barcode:
+                    try:
+                        history.append({
+                            'date': row[1],
+                            'quantity': int(row[2])
+                        })
+                    except Exception as e:
+                        # If a conversion error occurs, skip this row.
+                        continue
+    # Optionally sort the history by date
+    history.sort(key=lambda x: x['date'])
+
+    return jsonify(history)
+
+
+@app.route('/inventory/log-scan', methods=['POST'])
+def log_scan():
+    try:
+        data = request.json
+        barcode = data.get('barcode')
+        current_qty = data.get('current_qty')  # expected current stock level
+
+        if not barcode or current_qty is None:
+            return jsonify({'status': 'error', 'message': 'Both barcode and current_qty are required.'}), 400
+
+        # Append the log entry to our CSV file:
+        # Ensure the "data" folder exists first.
+        os.makedirs("data", exist_ok=True)
+        with open("data/stock_history.csv", mode="a", newline="") as file:
+            writer = csv.writer(file)
+            # Log the barcode, current timestamp, and current quantity.
+            writer.writerow([barcode, datetime.now().isoformat(), current_qty])
+        
+        return jsonify({'status': 'success', 'message': 'Scan logged successfully'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+    
 
 if __name__ == '__main__':
     import os
