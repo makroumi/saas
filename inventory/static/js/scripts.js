@@ -43,6 +43,7 @@ const scannerContainer = document.getElementById('scannerContainer');
 const scannerVideo = document.getElementById('scannerVideo');
 const startScannerBtn = document.getElementById('startScannerBtn');
 const stopScannerBtn = document.getElementById('stopScannerBtn');
+// const expiryDate = document.getElementById('productExpiry').value;
 
 
 // Temporary data for search suggestions
@@ -280,18 +281,18 @@ function closeRemoveStockModal() {
     removeStockError.classList.add('hidden');
 }
 
-function addStockHandler(e) {
-    e.preventDefault();
-    const addQuantity = parseInt(document.getElementById('addQuantity').value);
-    const barcode = barcodeInput.value.trim();
-    closeAddStockModal();
-    adjustStock(barcode, addQuantity);
+// function addStockHandler(e) {
+//     e.preventDefault();
+//     const addQuantity = parseInt(document.getElementById('addQuantity').value);
+//     const barcode = barcodeInput.value.trim();
+//     closeAddStockModal();
+//     adjustStock(barcode, addQuantity);
 
-    // Update the UI (in a real app, we'd refresh from the API)
-    const currentStock = parseInt(document.getElementById('currentStock').textContent);
-    document.getElementById('currentStock').textContent = currentStock + addQuantity;
-    document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
-}
+//     // Update the UI (in a real app, we'd refresh from the API)
+//     const currentStock = parseInt(document.getElementById('currentStock').textContent);
+//     document.getElementById('currentStock').textContent = currentStock + addQuantity;
+//     document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
+// }
 
 function removeStockHandler(e) {
     e.preventDefault();
@@ -418,8 +419,9 @@ function showProductDetails(barcode) {
       document.getElementById('detailsUnitCost').textContent = p.cost ? `$${p.cost}` : '-';
       document.getElementById('detailsSellingPrice').textContent = p.price ? `$${p.price}` : '-';
       document.getElementById('detailsLastUpdated').textContent = new Date().toLocaleString();
-      document.getElementById('detailsExpiryDate').textContent = p.expiry || '-';
-      document.getElementById('detailsDescription').textContent = p.description || 'No description available.';
+      document.getElementById('detailsExpiryDate').value = p.expiry || '';
+      document.getElementById('detailsDescription').value = p.description || 'No description available.';
+      
       
       const img = document.getElementById('detailsProductImage');
       img.src = p.image_url || 'https://picsum.photos/80';
@@ -461,176 +463,204 @@ function logProductScan(barcode, currentStock) {
     });
 }
 
+// 1. FIXED HELPER FUNCTIONS
 
-// This function generates simulated data in case no logged history exists.
-// (Useful for development until real stock history accumulates.)
+// 1. Helper Functions (Improved)
+
+
+
+// Returns the time unit (granularity) for the selected range.
+function getTimeUnitForRange(range) {
+  switch (range) {
+    case '24hours': return 'hour';
+    case 'week':     return 'day';
+    case 'month':    return 'day';
+    case '3months':  return 'week';
+    case '6months':  return 'month';
+    case 'year':     return 'month';
+    case '5years':   return 'year';
+    case '10years':  return 'year';
+    default:         return 'day';
+  }
+}
+
+// Returns the minimum date for the x-axis based on the selected range.
+function getRangeMin(range) {
+  const now = new Date();
+  switch (range) {
+    case '24hours': return new Date(now - 24 * 60 * 60 * 1000);
+    case 'week':    return new Date(now - 7 * 24 * 60 * 60 * 1000);
+    case 'month':   return new Date(now - 30 * 24 * 60 * 60 * 1000);
+    case '3months': return new Date(now - 90 * 24 * 60 * 60 * 1000);
+    case '6months': return new Date(now - 180 * 24 * 60 * 60 * 1000);
+    case 'year':    return new Date(now - 365 * 24 * 60 * 60 * 1000);
+    case '5years':  return new Date(now.getFullYear() - 5, now.getMonth(), now.getDate());
+    case '10years': return new Date(now.getFullYear() - 10, now.getMonth(), now.getDate());
+    default:        return new Date(now - 7 * 24 * 60 * 60 * 1000);
+  }
+}
+
+// Generates simulated data spanning from the computed min date up to now.
 function generateSimulatedStockHistory(range) {
   const points = [];
   const now = new Date();
-
-  switch (range) {
-    case '24hours':
-      for (let i = 0; i < 12; i++) {
-        const date = new Date(now.getTime() - ((11 - i) * 2 * 60 * 60 * 1000));
-        points.push({ date: date.toISOString(), quantity: Math.floor(Math.random() * 100) });
-      }
-      break;
-    case 'day':
-      for (let i = 0; i < 6; i++) {
-        const date = new Date(now.getTime() - ((5 - i) * 4 * 60 * 60 * 1000));
-        points.push({ date: date.toISOString(), quantity: Math.floor(Math.random() * 100) });
-      }
-      break;
-    case 'week':
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(now.getTime() - ((6 - i) * 24 * 60 * 60 * 1000));
-        points.push({ date: date.toISOString(), quantity: Math.floor(Math.random() * 100) });
-      }
-      break;
-    case 'month':
-      for (let i = 0; i < 30; i++) {
-        const date = new Date(now);
-        date.setDate(now.getDate() - (29 - i));
-        points.push({ date: date.toISOString(), quantity: Math.floor(Math.random() * 100) });
-      }
-      break;
-    default:
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(now.getTime() - ((6 - i) * 24 * 60 * 60 * 1000));
-        points.push({ date: date.toISOString(), quantity: Math.floor(Math.random() * 100) });
-      }
-      break;
+  const start = getRangeMin(range);
+  const unit = getTimeUnitForRange(range);
+  let current = new Date(start);
+  
+  while (current <= now) {
+    points.push({
+      date: current.toISOString(),
+      quantity: Math.floor(Math.random() * 100)
+    });
+    
+    if (unit === 'hour') current.setHours(current.getHours() + 1);
+    else if (unit === 'day') current.setDate(current.getDate() + 1);
+    else if (unit === 'week') current.setDate(current.getDate() + 7);
+    else if (unit === 'month') current.setMonth(current.getMonth() + 1);
+    else if (unit === 'year') current.setFullYear(current.getFullYear() + 1);
   }
-
   return points;
 }
 
-
-// Loads stock history data from your Flask endpoint and updates (or creates) the chart.
+// 2. The Fixed loadStockHistory() Function
 function loadStockHistory(barcode, range) {
   fetch(`/inventory/stock-history?barcode=${barcode}`)
     .then(res => res.json())
     .then(data => {
-      // Check if the returned data is valid – if not, use simulated data.
-      if (!Array.isArray(data) || data.length === 0) {
-        console.warn("No stock history found, using simulated data.");
-        data = generateSimulatedStockHistory(range);
+      const rangeMin = getRangeMin(range);
+      const now = new Date();
+      
+      // Filter data to selected range
+      let filteredData = Array.isArray(data) 
+        ? data.filter(record => {
+            const dt = new Date(record.date);
+            return dt >= rangeMin && dt <= now;
+          })
+        : [];
+
+      // Use simulated data if no real data available
+      if (filteredData.length === 0) {
+        filteredData = generateSimulatedStockHistory(range);
       }
-      
-      // Map the fetched (or simulated) data into arrays.
-      const labels = data.map(record => record.date);
-      const quantities = data.map(record => record.quantity);
-      
+
       const canvas = document.getElementById("stockHistoryChart");
-      if (!canvas) {
-        console.error("Could not find stockHistoryChart canvas.");
-        return;
-      }
+      if (!canvas) return;
+      
       const ctx = canvas.getContext("2d");
       
-      // If a chart already exists, try to update its data; otherwise create a new chart.
-      if (window.stockHistoryChart) {
-        // If the chart instance is valid, update its data.
-        if (window.stockHistoryChart.data &&
-            window.stockHistoryChart.data.datasets &&
-            window.stockHistoryChart.data.datasets.length > 0) {
-          window.stockHistoryChart.data.labels = labels;
-          window.stockHistoryChart.data.datasets[0].data = quantities;
-          window.stockHistoryChart.update();
-        } else {
-          console.error("Chart instance data structure is invalid. Recreating chart.");
-          // Destroy chart if possible.
-          if (typeof window.stockHistoryChart.destroy === "function") {
-            window.stockHistoryChart.destroy();
-          } else {
-            console.warn("Chart instance does not have a destroy method; recreating without destroying.");
-          }
-          window.stockHistoryChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels: labels,
-              datasets: [{
-                label: 'Stock Quantity',
-                data: quantities,
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 1,
-                fill: false
-              }]
-            },
-            options: {
-              scales: {
-                x: {
-                  type: 'time',
-                  time: {
-                    parser: 'YYYY-MM-DDTHH:mm:ss.SSSZ',
-                    tooltipFormat: 'll HH:mm',
-                    unit: 'day',
-                    displayFormats: {
-                      day: 'MMM D'
-                    }
-                  },
-                  title: { display: true, text: 'Date' }
-                },
-                y: {
-                  beginAtZero: true,
-                  title: { display: true, text: 'Quantity' }
-                }
-              }
-            }
-          });
-        }
-      } else {
-        // No chart exists yet – create a new one.
-        window.stockHistoryChart = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: labels,
-            datasets: [{
-              label: 'Stock Quantity',
-              data: quantities,
-              backgroundColor: 'rgba(75, 192, 192, 0.2)',
-              borderColor: 'rgba(75, 192, 192, 1)',
-              borderWidth: 1,
-              fill: false
-            }]
-          },
-          options: {
-            scales: {
-              x: {
-                type: 'time',
-                time: {
-                  parser: 'YYYY-MM-DDTHH:mm:ss.SSSZ',
-                  tooltipFormat: 'll HH:mm',
-                  unit: 'day',
-                  displayFormats: {
-                    day: 'MMM D'
-                  }
-                },
-                title: { display: true, text: 'Date' }
-              },
-              y: {
-                beginAtZero: true,
-                title: { display: true, text: 'Quantity' }
-              }
-            }
-          }
-        });
+      // SAFE CHART DESTRUCTION - FIXED THE ERROR
+      if (window.stockHistoryChart instanceof Chart) {
+        window.stockHistoryChart.destroy();
       }
+      
+      // Prepare chart data
+      const labels = filteredData.map(record => record.date);
+      const quantities = filteredData.map(record => record.quantity);
+      
+      // Create new chart with proper time scale configuration
+      window.stockHistoryChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Stock Quantity',
+            data: quantities,
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1,
+            fill: false
+          }]
+        },
+        options: {
+                maintainAspectRatio: false,
+    responsive: true,
+    
+          scales: {
+            x: {
+              type: 'time',
+              min: rangeMin,
+              max: now,
+              time: {
+                unit: getTimeUnitForRange(range),
+                displayFormats: {
+                  hour: 'MMM D, HH:mm',
+                  day: 'MMM D',
+                  week: 'MMM D',
+                  month: 'MMM YYYY',
+                  year: 'YYYY'
+                }
+              },
+              title: {
+                display: true,
+                text: 'Date'
+              }
+            },
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Quantity'
+              }
+            }
+          }
+        }
+      });
     })
     .catch(err => {
-      console.error("Failed to load stock history:", err);
+      console.error("Error loading stock history:", err);
     });
 }
 
-function closeProductDetails() {
-    productDetailsModal.classList.add('hidden');
-}
+
+
+
+
 
 function editProduct() {
-    closeProductDetails();
-    showTab('add-product');
-    // In a real app, we would populate the form with the product data
+    // Hide the display container and show the edit form in the same modal.
+    document.getElementById('productDetailsDisplay').classList.add('hidden');
+    document.getElementById('productDetailsEdit').classList.remove('hidden');
+    
+    // Pre-populate the edit form fields with current values:
+    document.getElementById('editProductName').value = document.getElementById('detailsProductName').value;
+    
+    // For expiry date, if you had stored the actual date in a data attribute, use that.
+    // Otherwise, if using the displayed expiry value, it might not be in a valid date format.
+    // You might need to store the actual date in a data attribute (for example, data-expiry) on the display element.
+    // For this explanation, assume you can use it directly:
+    document.getElementById('editExpiryDate').value = document.getElementById('detailsExpiryDate').value;
+    
+    document.getElementById('editDescription').value = document.getElementById('detailsDescription').textContent;
+}
+
+function saveProductEdit() {
+    // Get updated data from the edit form.
+    const updatedName = document.getElementById('editProductName').value;
+    const updatedExpiry = document.getElementById('editExpiryDate').value;
+    const updatedDesc = document.getElementById('editDescription').value;
+    
+    // Log the updates (for debugging)
+    console.log("Updated Name:", updatedName);
+    console.log("Updated Expiry:", updatedExpiry);
+    console.log("Updated Description:", updatedDesc);
+    
+    // Update the read-only display:
+    document.getElementById('detailsProductName').textContent = updatedName;
+    document.getElementById('detailsExpiryDate').value = updatedExpiry;
+    document.getElementById('detailsDescription').value = updatedDesc;
+    
+    // Hide the edit form and show the display again.
+    document.getElementById('productDetailsEdit').classList.add('hidden');
+    document.getElementById('productDetailsDisplay').classList.remove('hidden');
+}
+
+
+
+function cancelEditProduct() {
+    // Simply revert to the read-only display without saving changes.
+    document.getElementById('productDetailsEdit').classList.add('hidden');
+    document.getElementById('productDetailsDisplay').classList.remove('hidden');
 }
 
 function showAlertTab(tabId) {
@@ -986,34 +1016,64 @@ function afterProductAdded() {
 
 function toggleEditProduct() {
   const isEditing = window.isEditing || false;
-  const fields = [
+
+  // For inline fields (non-form controls)
+  const inlineFields = [
     'detailsProductName',
     'detailsProductCategory',
     'detailsCurrentStock',
     'detailsReorderThreshold',
     'detailsUnitCost',
-    'detailsSellingPrice',
-    'detailsExpiryDate',
-    'detailsDescription'
+    'detailsSellingPrice'
   ];
-
-  fields.forEach(id => {
+  inlineFields.forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.contentEditable = !isEditing;
-    if (el) el.classList.toggle('bg-yellow-50', !isEditing);
+    if (el) {
+      el.contentEditable = !isEditing;
+      el.classList.toggle('bg-yellow-50', !isEditing);
+    }
   });
+
+  // For form controls (expiry date and description), toggle the readonly attribute.
+  const expiryEl = document.getElementById('detailsExpiryDate');
+  const descEl = document.getElementById('detailsDescription');
+  
+  if (expiryEl) {
+    if (!isEditing) {
+      expiryEl.removeAttribute('readonly'); // enable editing
+      expiryEl.classList.add('bg-yellow-50');
+    } else {
+      expiryEl.setAttribute('readonly', 'true'); // disable editing
+      expiryEl.classList.remove('bg-yellow-50');
+    }
+  }
+  
+  if (descEl) {
+    if (!isEditing) {
+      descEl.removeAttribute('readonly'); // enable editing
+      descEl.classList.add('bg-yellow-50');
+    } else {
+      descEl.setAttribute('readonly', 'true'); // disable editing
+      descEl.classList.remove('bg-yellow-50');
+    }
+  }
 
   const btn = document.getElementById('toggleEditBtn');
   if (!isEditing) {
     btn.innerHTML = '<i class="fas fa-save mr-2"></i>Save Changes';
   } else {
     btn.innerHTML = '<i class="fas fa-edit mr-2"></i>Edit Product';
-    saveEditedProduct(); // on save
+    saveEditedProduct(); // call the save function when leaving edit mode
   }
 
   window.isEditing = !isEditing;
 }
 
+
+
+
+
+// Find this function and replace it with the updated version below
 function saveEditedProduct() {
   const product = {
     barcode: window.currentBarcode,
@@ -1023,8 +1083,8 @@ function saveEditedProduct() {
     threshold: parseInt(document.getElementById('detailsReorderThreshold').textContent.trim()) || 0,
     cost: parseFloat(document.getElementById('detailsUnitCost').textContent.replace(/[^0-9.]/g, '')) || 0,
     price: parseFloat(document.getElementById('detailsSellingPrice').textContent.replace(/[^0-9.]/g, '')) || 0,
-    expiry: document.getElementById('detailsExpiryDate').textContent.trim(),
-    description: document.getElementById('detailsDescription').textContent.trim()
+    expiry: document.getElementById('detailsExpiryDate').value, // use .value from input
+    description: document.getElementById('detailsDescription').value.trim() // use .value from textarea
   };
 
   fetch('/inventory/add', {
@@ -1041,3 +1101,71 @@ function saveEditedProduct() {
     })
     .catch(err => console.error('Failed to save changes:', err));
 }
+
+
+
+
+
+
+function addStockHandler(event) {
+  // Prevent default form submission.
+  event.preventDefault();
+  console.log("Confirm Add clicked");
+
+  // Retrieve values from the form fields.
+  const addQuantity = parseInt(document.getElementById('addQuantity').value);
+  
+  // Assuming `barcodeInput` is a global variable holding the input element that was updated when scanning.
+  const barcode = barcodeInput ? barcodeInput.value.trim() : ''; 
+  
+  const reason = document.getElementById('addReason').value;
+  const notes = document.getElementById('addNotes').value;
+  
+  // Use the new, unique ID for the expiry date in the Add Stock form.
+  const expiryDate = document.getElementById('addExpiryDate') ?
+                      document.getElementById('addExpiryDate').value : '';
+
+  // If you have a function to adjust stock immediately (e.g. for local UI updates), call it:
+  adjustStock(barcode, addQuantity);
+
+  // Optionally update the UI: update the current stock text and last updated time.
+  const currentStockEl = document.getElementById('currentStock');
+  const lastUpdatedEl = document.getElementById('lastUpdated');
+  if (currentStockEl && lastUpdatedEl) {
+    const currentStock = parseInt(currentStockEl.textContent);
+    currentStockEl.textContent = currentStock + addQuantity;
+    lastUpdatedEl.textContent = new Date().toLocaleString();
+  }
+  
+  // Optionally, prepare the data object and send it to your server.
+  // If you use a POST endpoint at /inventory/add, you could do:
+  const data = {
+    barcode: barcode,
+    quantity: addQuantity,
+    reason: reason,
+    notes: notes,
+    expiryDate: expiryDate  // This may be an empty string if not provided.
+  };
+
+  // Example: Sending the data to your server (adjust endpoint and method as needed)
+  fetch('/inventory/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+    .then(response => response.json())
+    .then(result => {
+      console.log("Server response:", result);
+      // Optional: Refresh data or update the UI based on result.
+    })
+    .catch(err => console.error("Error sending add stock data:", err));
+  
+  // Finally, close the Add Stock modal.
+  closeAddStockModal();
+}
+
+
+function closeProductDetails() {
+    document.getElementById('productDetailsModal').classList.add('hidden');
+}
+

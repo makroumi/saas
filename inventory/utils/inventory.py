@@ -7,7 +7,8 @@ def load_inventory(file_path):
         return pd.read_csv(file_path, dtype=str)
     return pd.DataFrame(columns=[
         'barcode','name','category','quantity','cost','price','expiry',
-        'threshold','distributor','manufacturer','synced'
+        'threshold','distributor','manufacturer','synced', ' image_url',
+        'description'
     ])
 
 def save_inventory(file_path, df):
@@ -15,19 +16,19 @@ def save_inventory(file_path, df):
 
 def get_alerts(df):
     now = datetime.utcnow().date()
-    alerts = {'expiry':[], 'understock':[], 'overstock':[]}
+    alerts = {'expiry': [], 'understock': [], 'overstock': []}
     for _, row in df.iterrows():
         try:
-            exp = datetime.strptime(row['expiry'],'%Y-%m-%d').date()
+            exp = datetime.strptime(row['expiry'], '%Y-%m-%d').date()
             days = (exp - now).days
-            if days in (7,3,1):
-                alerts['expiry'].append({'barcode':row['barcode'],'days_to_expiry':days})
-        except:
+            if days in (7, 3, 1):
+                alerts['expiry'].append({'barcode': row['barcode'], 'days_to_expiry': days})
+        except Exception as e:
             pass
-        qty = int(float(row.get('quantity',0)))
-        thr = int(float(row.get('threshold',0)))
-        if thr>0 and qty<=thr:
-            alerts['understock'].append({'barcode':row['barcode'],'quantity':qty,'threshold':thr})
-        if qty> thr*10:
-            alerts['overstock'].append({'barcode':row['barcode'],'quantity':qty,'threshold':thr})
+        qty = int(float(row.get('quantity', 0)))
+        thr = int(float(row.get('threshold', 0)))
+        if thr > 0 and qty <= thr:
+            alerts['understock'].append({'barcode': row['barcode'], 'quantity': qty, 'threshold': thr})
+        if thr > 0 and qty > thr * 10:
+            alerts['overstock'].append({'barcode': row['barcode'], 'quantity': qty, 'threshold': thr})
     return alerts

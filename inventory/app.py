@@ -146,8 +146,11 @@ def inventory_add():
                 'distributor': data.get('distributor', ''),
                 'manufacturer': data.get('manufacturer', ''),
                 'synced': data.get('synced', False),
-                'image_url': data.get('image_url', '')
+                'image_url': data.get('image_url', ''),
+                'description': data.get('description', '')
             }
+            if 'description' not in df.columns:
+                df['description'] = ''
             df = pd.concat([df, pd.DataFrame([new_product])], ignore_index=True)
 
         save_inventory(app.config['INVENTORY_FILE'], df)
@@ -274,7 +277,7 @@ def adjust_stock():
         else:
             df = pd.DataFrame(columns=[
                 'barcode','name','category','quantity','cost','price','expiry',
-                'threshold','distributor','manufacturer','synced','image_url'
+                'threshold','distributor','manufacturer','synced','image_url', 'description'
             ])
         
         # Check if the product exists:

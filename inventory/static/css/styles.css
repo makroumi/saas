@@ -89,3 +89,23 @@
     z-index: 10;
     display: none;
 }
+
+/* Chart container responsive fix */
+.chart-container {
+  position: relative;
+  width: 100%;
+  height: 300px; /* Fixed height for better aspect ratio */
+}
+
+/* For smaller screens */
+@media (max-width: 768px) {
+  .chart-container {
+    height: 250px;
+  }
+}
+
+.no-border {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
