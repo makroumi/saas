@@ -630,30 +630,13 @@ function editProduct() {
     // You might need to store the actual date in a data attribute (for example, data-expiry) on the display element.
     // For this explanation, assume you can use it directly:
     document.getElementById('editExpiryDate').value = document.getElementById('detailsExpiryDate').value;
-    
-    document.getElementById('editDescription').value = document.getElementById('detailsDescription').textContent;
+    console.log("FROM detailsDescription:", document.getElementById('detailsDescription').value);
+
+    document.getElementById('editDescription').value = document.getElementById('detailsDescription').value;
+    console.log("TO editDescription:", document.getElementById('editDescription').value);
+
 }
 
-function saveProductEdit() {
-    // Get updated data from the edit form.
-    const updatedName = document.getElementById('editProductName').value;
-    const updatedExpiry = document.getElementById('editExpiryDate').value;
-    const updatedDesc = document.getElementById('editDescription').value;
-    
-    // Log the updates (for debugging)
-    console.log("Updated Name:", updatedName);
-    console.log("Updated Expiry:", updatedExpiry);
-    console.log("Updated Description:", updatedDesc);
-    
-    // Update the read-only display:
-    document.getElementById('detailsProductName').textContent = updatedName;
-    document.getElementById('detailsExpiryDate').value = updatedExpiry;
-    document.getElementById('detailsDescription').value = updatedDesc;
-    
-    // Hide the edit form and show the display again.
-    document.getElementById('productDetailsEdit').classList.add('hidden');
-    document.getElementById('productDetailsDisplay').classList.remove('hidden');
-}
 
 
 
@@ -1070,10 +1053,35 @@ function toggleEditProduct() {
 }
 
 
+function saveProductEdit() {
+    // Get updated data from the edit form.
+    const updatedName = document.getElementById('editProductName').value;
+    const updatedExpiry = document.getElementById('editExpiryDate').value;
+    
+    const updatedDesc = document.getElementById('editDescription').value;
+    
+    // Log the updates (for debugging)
+    console.log("Updated Name:", updatedName);
+    console.log("Updated Expiry:", updatedExpiry);
+    console.log("Updated Description:", updatedDesc);
+    
+    // Update the read-only display:
+    document.getElementById('detailsProductName').textContent = updatedName;
+    document.getElementById('detailsExpiryDate').value = updatedExpiry;
+    console.log("editDescription before save:", document.getElementById('editDescription').value);
+
+    document.getElementById('detailsDescription').value = updatedDesc;
+    console.log("detailsDescription after saveProductEdit:", document.getElementById('detailsDescription').value);
+
+    // Hide the edit form and show the display again.
+    document.getElementById('productDetailsEdit').classList.add('hidden');
+    document.getElementById('productDetailsDisplay').classList.remove('hidden');
+}
 
 
 
-// Find this function and replace it with the updated version below
+// Save the edited product details back to the server
+// This function is called when the "Save Changes" button is clicked in the product details modal
 function saveEditedProduct() {
   const product = {
     barcode: window.currentBarcode,
@@ -1083,24 +1091,38 @@ function saveEditedProduct() {
     threshold: parseInt(document.getElementById('detailsReorderThreshold').textContent.trim()) || 0,
     cost: parseFloat(document.getElementById('detailsUnitCost').textContent.replace(/[^0-9.]/g, '')) || 0,
     price: parseFloat(document.getElementById('detailsSellingPrice').textContent.replace(/[^0-9.]/g, '')) || 0,
-    expiry: document.getElementById('detailsExpiryDate').value, // use .value from input
-    description: document.getElementById('detailsDescription').value.trim() // use .value from textarea
+    expiry: document.getElementById('detailsExpiryDate').value,
+    description: document.getElementById('detailsDescription').value.trim()
   };
+
+  console.log("Preparing to save. detailsDescription =", product.description);
 
   fetch('/inventory/add', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(product)
   })
-    .then(res => res.json())
-    .then(data => {
-      console.log('Saved:', data);
-      if (data.status === 'ok') {
-        loadStockHistory(product.barcode, document.getElementById('stockHistoryRange').value);
-      }
-    })
-    .catch(err => console.error('Failed to save changes:', err));
+  .then(res => res.json())
+  .then(data => {
+    console.log("Saved:", data);
+    console.log("Returned inventory barcodes:", data.inventory.map(p => p.barcode));
+    console.log("Looking for barcode:", product.barcode);
+
+    if (data.status === 'ok') {
+      // Just use the value we already have
+      document.getElementById('detailsDescription').value = product.description;
+
+      loadStockHistory(
+        product.barcode,
+        document.getElementById('stockHistoryRange').value
+      );
+    }
+  })
+  .catch(err => console.error('Failed to save changes:', err));
 }
+
+
+
 
 
 

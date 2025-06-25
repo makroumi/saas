@@ -125,7 +125,8 @@ def inventory_add():
             return jsonify({'error': 'Barcode is required'}), 400
 
         barcode = str(data['barcode'])
-
+        if 'description' not in df.columns:
+                df['description'] = ''
         if barcode in df['barcode'].astype(str).values:
             # Update existing product
             idx = df.index[df['barcode'].astype(str) == barcode].tolist()[0]
@@ -149,8 +150,7 @@ def inventory_add():
                 'image_url': data.get('image_url', ''),
                 'description': data.get('description', '')
             }
-            if 'description' not in df.columns:
-                df['description'] = ''
+            
             df = pd.concat([df, pd.DataFrame([new_product])], ignore_index=True)
 
         save_inventory(app.config['INVENTORY_FILE'], df)
