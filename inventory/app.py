@@ -3,6 +3,10 @@ import re
 import io
 import warnings
 import pandas as pd
+import uuid # Used to generate unique filenames for uploaded images
+import base64 # Used for decoding base64 image data
+import time # Used for generating unique barcodes if needed
+
 from flask import Flask, request, jsonify, render_template, send_file
 from werkzeug.utils import secure_filename
 from utils.inventory import load_inventory, save_inventory, get_alerts
@@ -12,15 +16,27 @@ from utils.analysis import process_data
 import requests
 from datetime import datetime
 import csv
-
 warnings.filterwarnings('ignore')
 
 app = Flask(__name__)
 app.config['INVENTORY_FILE'] = "data/inventory.csv"
 app.config['ORDERS_FILE'] = "data/orders.csv"
+# Updated ALLOWED_EXTS to explicitly include image types
 app.config['ALLOWED_EXTS'] = {'csv','xlsx','xls','json','tsv','pdf','png','jpg','jpeg','gif'}
 
+# Define the folder where product images will be uploaded
+# It will be inside your static directory: static/images/products/
+app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'images', 'products')
+
+# Ensure the upload directory exists when the application starts
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+
 def allowed_file(filename):
+    """
+    Checks if a given filename has an allowed extension based on app.config['ALLOWED_EXTS'].
+    This now correctly handles image file extensions as well.
+    """
     return '.' in filename and filename.rsplit('.',1)[1].lower() in app.config['ALLOWED_EXTS']
 
 def fuzzy_column_match(col, aliases):
@@ -31,69 +47,23 @@ def fuzzy_column_match(col, aliases):
 
 @app.route('/inventory/count', methods=['GET'])
 def inventory_count():
+    """
+    Returns the entire inventory as a JSON list of product dictionaries.
+    Handles NaN values by replacing them with empty strings.
+    """
     df = load_inventory(app.config['INVENTORY_FILE'])
     # Replace NaN with an empty string (or another valid value, like 0 or null)
     df = df.fillna('')
     return jsonify(df.to_dict(orient='records'))
 
 
-
-# @app.route('/inventory/adjust-stock', methods=['POST'])
-# def adjust_stock():
-#     try:
-#         data = request.json
-#         barcode = data.get('barcode')  # Make sure the barcode is defined here
-#         adjustment = int(data.get('adjustment', 0))
-        
-#         # Load inventory (using your existing load_inventory function)
-#         def load_inventory(filepath):
-#             if os.path.exists(filepath):
-#                 return pd.read_csv(filepath, dtype=str).fillna('')
-#             return pd.DataFrame(columns=[
-#                 'barcode','name','category','quantity','cost','price','expiry',
-#                 'threshold','distributor','manufacturer','synced','image_url'
-#             ])
-#         df = load_inventory(app.config['INVENTORY_FILE'])
-        
-#         # Check if product exists
-#         if barcode not in df['barcode'].values:
-#             return jsonify({
-#                 'status': 'error',
-#                 'message': f'Product with barcode {barcode} not found. Add it first.'
-#             }), 404
-        
-#         # Find and update the product
-#         index = df.index[df['barcode'] == barcode].tolist()[0]
-#         current_qty = int(df.at[index, 'quantity'])
-#         new_qty = max(0, current_qty + adjustment)
-#         df.at[index, 'quantity'] = str(new_qty)
-        
-#         # Save changes to the inventory CSV
-#         save_inventory(app.config['INVENTORY_FILE'], df)
-        
-#         # Log stock adjustment to history CSV
-#         # Import csv module if not already imported at the top of your file
-#         import csv
-#         with open("data/stock_history.csv", mode="a", newline="") as file:
-#             writer = csv.writer(file)
-#             writer.writerow([barcode, datetime.now().isoformat(), new_qty])
-        
-#         return jsonify({
-#             'status': 'success',
-#             'new_quantity': new_qty,
-#             'message': f'Stock updated to {new_qty}'
-#         })
-        
-#     except Exception as e:
-#         return jsonify({
-#             'status': 'error',
-#             'message': str(e)
-#         }), 500
-
-
-# Update the search function to handle barcodes properly
 @app.route('/inventory/search', methods=['GET'])
 def inventory_search():
+    """
+    Searches the inventory based on a query string (barcode, name, or category).
+    Returns a JSON list of matching products, including their image_url.
+    If no query, returns all products.
+    """
     q = request.args.get('q', '').strip().lower()
     df = load_inventory(app.config['INVENTORY_FILE'])
 
@@ -101,74 +71,139 @@ def inventory_search():
         if not q:
             return jsonify(df.fillna('').to_dict(orient='records'))
 
-        if q.isdigit():
+        # Search by barcode first (exact match for numeric barcodes)
+        # Ensure barcode column is treated as string for consistent comparison
+        if q.isdigit(): # If query is purely numeric, assume it's a barcode
             results = df[df['barcode'].astype(str) == q]
             if not results.empty:
                 return jsonify(results.fillna('').to_dict(orient='records'))
 
+        # If not found by exact barcode, or query is not numeric, search by name (contains)
+        # Fallback to searching by name if barcode lookup fails or query is not a barcode
         results = df[df['name'].str.lower().str.contains(q, na=False)]
         return jsonify(results.fillna('').to_dict(orient='records'))
 
     except Exception as e:
+        app.logger.error(f"Error in inventory_search: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 
-
-# Update the add function to save products properly
 @app.route('/inventory/add', methods=['POST'])
 def inventory_add():
+    """
+    Handles adding a new product or updating an existing one in the inventory.
+    Supports both JSON data (for manual entries) and multipart/form-data (for entries with images).
+    """
+    # Initialize product_data from request.form (for multipart/form-data)
+    # This will contain all text fields.
+    product_data = {key: request.form.get(key) for key in request.form}
+
+    # Handle 'product_image' which comes via request.files if a Blob was appended
+    image_url = ''
+    if 'product_image' in request.files:
+        file = request.files['product_image']
+        if file.filename != '': # Check if a file was actually sent
+            filename = secure_filename(f"{uuid.uuid4().hex}_{file.filename}") # Generate unique name
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            
+            try:
+                file.save(filepath)
+                image_url = f"/static/images/products/{filename}"
+                print(f"Server: Image saved to {filepath}, URL: {image_url}")
+            except Exception as e:
+                print(f"Server: Error saving image file: {e}")
+                app.logger.error(f"Error saving image file: {e}", exc_info=True)
+                # Keep image_url as empty string on save error
+    
+    # Update image_url in product_data. This will overwrite if a direct 'image_url' was in form data,
+    # but prioritize the uploaded image if present.
+    product_data['image_url'] = image_url if image_url else product_data.get('image_url', '')
+
+    # Generate a barcode if not provided by the user (for manual entries)
+    if 'barcode' not in product_data or not product_data['barcode']:
+        product_data['barcode'] = f"MANUAL_{int(time.time())}"
+
+    # Load inventory using your utility function
+    df = load_inventory(app.config['INVENTORY_FILE'])
+
     try:
-        data = request.json or {}
-        df = load_inventory(app.config['INVENTORY_FILE'])
+        # Check if product exists by barcode (case-insensitive for robustness)
+        existing_product_df = df[df['barcode'].astype(str).str.lower() == str(product_data['barcode']).lower()]
 
-        if 'barcode' not in data or not data['barcode']:
-            return jsonify({'error': 'Barcode is required'}), 400
-
-        barcode = str(data['barcode'])
-        if 'description' not in df.columns:
-                df['description'] = ''
-        if barcode in df['barcode'].astype(str).values:
+        if not existing_product_df.empty:
             # Update existing product
-            idx = df.index[df['barcode'].astype(str) == barcode].tolist()[0]
-            for key, value in data.items():
-                if key in df.columns and key != 'barcode':
-                    df.at[idx, key] = value
+            idx = existing_product_df.index[0]
+            # Iterate through product_data to update fields
+            for key, value in product_data.items():
+                if key in df.columns: # Only update if column exists in DataFrame
+                    if key in ['quantity', 'threshold']:
+                        df.at[idx, key] = int(value) if value else 0
+                    elif key in ['cost', 'price']:
+                        df.at[idx, key] = float(value) if value else 0.0
+                    else:
+                        df.at[idx, key] = str(value) if value is not None else ''
+            print(f"Server: Product {product_data['barcode']} updated. New image_url: {product_data['image_url']}")
+
         else:
             # Add new product
-            new_product = {
-                'barcode': barcode,
-                'name': data.get('name', ''),
-                'category': data.get('category', ''),
-                'quantity': data.get('quantity', 0),
-                'cost': data.get('cost', 0),
-                'price': data.get('price', 0),
-                'expiry': data.get('expiry', ''),
-                'threshold': data.get('threshold', 0),
-                'distributor': data.get('distributor', ''),
-                'manufacturer': data.get('manufacturer', ''),
-                'synced': data.get('synced', False),
-                'image_url': data.get('image_url', ''),
-                'description': data.get('description', '')
+            new_product_row = {
+                'barcode': str(product_data.get('barcode')),
+                'name': str(product_data.get('name', '')),
+                'category': str(product_data.get('category', 'Uncategorized')),
+                'quantity': int(product_data.get('quantity', 0)),
+                'cost': float(product_data.get('cost', 0.0)),
+                'price': float(product_data.get('price', 0.0)),
+                'expiry': str(product_data.get('expiry', '')),
+                'threshold': int(product_data.get('threshold', 0)),
+                'distributor': str(product_data.get('distributor', '')),
+                'manufacturer': str(product_data.get('manufacturer', '')),
+                'synced': bool(product_data.get('synced', False)),
+                'image_url': str(product_data.get('image_url', '')),
+                'description': str(product_data.get('description', ''))
             }
-            
-            df = pd.concat([df, pd.DataFrame([new_product])], ignore_index=True)
+            # Ensure all columns exist in the new row DataFrame, add missing ones with default empty values
+            new_product_df = pd.DataFrame([new_product_row], columns=df.columns if not df.empty else list(new_product_row.keys()))
+            df = pd.concat([df, new_product_df], ignore_index=True)
+            print(f"Server: New product {product_data['barcode']} added. Image_url: {product_data['image_url']}")
 
-        save_inventory(app.config['INVENTORY_FILE'], df)
-        df = df.fillna('')  # ← THIS FIXES YOUR FRONTEND CRASH
-
-        return jsonify({'status': 'ok', 'inventory': df.to_dict(orient='records')})
+        save_inventory(app.config['INVENTORY_FILE'], df) # Save using your utility function
+        return jsonify({'status': 'ok', 'message': 'Product added/updated successfully.'})
 
     except Exception as e:
+        app.logger.error(f"Error adding/updating product: {e}", exc_info=True) # Log full traceback
+        return jsonify({'error': str(e)}), 500
+
+    
+@app.route('/inventory/categories', methods=['GET'])
+def inventory_categories():
+    """
+    Returns a JSON list of unique categories present in the inventory.
+    """
+    try:
+        df = load_inventory(app.config['INVENTORY_FILE'])
+        categories = df['category'].dropna().unique().tolist()
+        # Remove empty categories and sort
+        categories = [cat for cat in categories if cat.strip()]
+        categories.sort()
+        return jsonify({'categories': categories})
+    except Exception as e:
+        app.logger.error(f"Error getting categories: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 
 @app.route('/inventory/alerts', methods=['GET'])
 def inventory_alerts():
+    """
+    Returns a JSON object containing different types of inventory alerts (expiry, understock, overstock).
+    """
     df = load_inventory(app.config['INVENTORY_FILE'])
     return jsonify(get_alerts(df))
 
 @app.route('/inventory/order', methods=['POST'])
 def inventory_order():
+    """
+    Handles placing an order.
+    """
     data = request.json or {}
     order = create_order(data)
     df = load_orders(app.config['ORDERS_FILE'])
@@ -178,6 +213,9 @@ def inventory_order():
 
 @app.route('/inventory/sync', methods=['POST'])
 def inventory_sync():
+    """
+    Marks a product as synced.
+    """
     data = request.json or {}
     barcode = data.get('barcode')
     df = load_inventory(app.config['INVENTORY_FILE'])
@@ -191,6 +229,9 @@ def inventory_sync():
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
+    """
+    Analyzes an uploaded data file (CSV, XLSX, JSON, TSV).
+    """
     if 'file' not in request.files:
         return jsonify({'error':'No file part'}),400
     f = request.files['file']
@@ -225,6 +266,9 @@ def analyze():
 
 @app.route('/sample', methods=['GET'])
 def sample():
+    """
+    Returns sample data for analysis demonstration.
+    """
     return jsonify({
         "kpis": {
             "total_sales": 15000,
@@ -246,58 +290,67 @@ def sample():
         ]
     })
 
-# Update the API endpoint
-@app.route('/api/barcode/<barcode>', methods=['GET'])
-def api_barcode_lookup(barcode):
-    # First try public databases
-    result = lookup_barcode(barcode)
+@app.route('/api/barcode/<barcode_val>')
+def api_barcode_lookup(barcode_val):
+    """
+    Simulates an external API lookup for product information by barcode.
+    Provides dummy data for specific barcodes or a 'not found' response.
+    Includes fallback to local inventory if not found externally.
+    """
+    # First try public databases (using your utils.barcode.lookup_barcode)
+    result = lookup_barcode(barcode_val)
     if result and result.get('name'):
+        # If found, return the result
         return jsonify(result)
     
-    # # If not found in public databases, check local inventory
-    # df = load_inventory(app.config['INVENTORY_FILE'])
-    # product = df[df['barcode'] == barcode]
-    # if not product.empty:
-    #     return jsonify(product.iloc[0].to_dict())
+    # If not found in public databases, check local inventory
+    df = load_inventory(app.config['INVENTORY_FILE'])
+    # Ensure barcode column is string for consistent comparison
+    product = df[df['barcode'].astype(str) == barcode_val] 
+    if not product.empty:
+        # If found in local inventory, return its details
+        return jsonify(product.iloc[0].to_dict())
     
-    # return jsonify({}), 404
+    # If not found anywhere
+    return jsonify({"message": "Product not found"}), 404
 
 
 @app.route('/inventory/adjust-stock', methods=['POST'])
 def adjust_stock():
+    """
+    Adjusts the quantity of a product based on its barcode.
+    Expects JSON input with 'barcode' and 'adjustment' (integer).
+    Logs adjustment to stock_history.csv.
+    """
     try:
         data = request.json
-        barcode = data.get('barcode')
+        barcode = str(data.get('barcode')) # Ensure barcode is string
         adjustment = int(data.get('adjustment', 0))
         
-        # Load inventory data.
-        # If you already import and use load_inventory from your utils, you can substitute that here.
-        if os.path.exists(app.config['INVENTORY_FILE']):
-            df = pd.read_csv(app.config['INVENTORY_FILE'], dtype=str).fillna('')
-        else:
-            df = pd.DataFrame(columns=[
-                'barcode','name','category','quantity','cost','price','expiry',
-                'threshold','distributor','manufacturer','synced','image_url', 'description'
-            ])
-        
-        # Check if the product exists:
-        if barcode not in df['barcode'].values:
+        df = load_inventory(app.config['INVENTORY_FILE']) # Use your util function
+
+        # Check if the product exists using string comparison
+        if barcode not in df['barcode'].astype(str).values:
             return jsonify({
                 'status': 'error',
                 'message': f'Product with barcode {barcode} not found. Add it first.'
             }), 404
         
         # Find and update the product's quantity:
-        index = df.index[df['barcode'] == barcode].tolist()[0]
-        current_qty = int(df.at[index, 'quantity'])
-        new_qty = max(0, current_qty + adjustment)
-        df.at[index, 'quantity'] = str(new_qty)
+        # Use .loc for safe label-based indexing
+        idx = df.index[df['barcode'].astype(str) == barcode].tolist()[0]
         
-        # Save the updated inventory.
+        # Convert to int, handle potential NaN or non-numeric values
+        current_qty_str = df.at[idx, 'quantity']
+        current_qty = int(current_qty_str) if pd.notna(current_qty_str) and str(current_qty_str).isdigit() else 0
+        
+        new_qty = max(0, current_qty + adjustment)
+        df.at[idx, 'quantity'] = str(new_qty) # Store back as string for CSV compatibility
+        
         save_inventory(app.config['INVENTORY_FILE'], df)
         
-        # Log the stock adjustment to a history CSV.
-        import csv
+        # Ensure the "data" folder exists before writing stock history
+        os.makedirs("data", exist_ok=True)
         with open("data/stock_history.csv", mode="a", newline="") as file:
             writer = csv.writer(file)
             writer.writerow([barcode, datetime.now().isoformat(), new_qty])
@@ -309,18 +362,22 @@ def adjust_stock():
         })
         
     except Exception as e:
+        app.logger.error(f"Error adjusting stock: {e}", exc_info=True)
         return jsonify({
             'status': 'error',
             'message': str(e)
         }), 500
 
-
 @app.route('/')
 def index():
+    """Renders the main index.html template."""
     return render_template('index.html')
 
 
 def notebook_demo():
+    """
+    Demonstration function for notebook environment.
+    """
     print("---- INVENTORY DEMO ----")
     inv = load_inventory(app.config['INVENTORY_FILE'])
     print(inv.head(),"\n")
@@ -336,6 +393,9 @@ def notebook_demo():
 
 @app.route('/inventory/stock-history', methods=['GET'])
 def stock_history():
+    """
+    Retrieves stock history for a given barcode from stock_history.csv.
+    """
     barcode = request.args.get('barcode')
     if not barcode:
         return jsonify({'error': 'Barcode parameter is required.'}), 400
@@ -355,6 +415,7 @@ def stock_history():
                         })
                     except Exception as e:
                         # If a conversion error occurs, skip this row.
+                        app.logger.error(f"Error reading stock history row: {row}. Error: {e}")
                         continue
     # Optionally sort the history by date
     history.sort(key=lambda x: x['date'])
@@ -364,6 +425,9 @@ def stock_history():
 
 @app.route('/inventory/log-scan', methods=['POST'])
 def log_scan():
+    """
+    Logs barcode scans to stock_history.csv.
+    """
     try:
         data = request.json
         barcode = data.get('barcode')
@@ -382,13 +446,21 @@ def log_scan():
         
         return jsonify({'status': 'success', 'message': 'Scan logged successfully'})
     except Exception as e:
+        app.logger.error(f"Error logging scan: {e}", exc_info=True)
         return jsonify({'status': 'error', 'message': str(e)}), 500
     
 
 if __name__ == '__main__':
-    import os
+    # Ensure data folder exists at startup
     os.makedirs('data', exist_ok=True)
+    # Initialize inventory.csv with headers if it doesn't exist or is empty
+    # This calls load_inventory and save_inventory from your utils module
+    df_initial = load_inventory(app.config['INVENTORY_FILE'])
+    if df_initial.empty:
+        save_inventory(app.config['INVENTORY_FILE'], df_initial) # Ensure an empty CSV with headers is created
+    
     if os.environ.get("COLAB_NOTEBOOK", ""):
         notebook_demo()
     else:
         app.run(host='0.0.0.0', debug=True)
+

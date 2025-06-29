@@ -68,14 +68,14 @@
                     <label for="apiKey" class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
                     <div class="relative">
                         <input type="password" id="apiKey" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" value="sk_test_xxxxxxxx">
-                        <button class="absolute right-3 top-2 text-gray-500 hover:text-gray-700">
+                        <button type="button" class="absolute right-3 top-2 text-gray-500 hover:text-gray-700">
                             <i class="far fa-eye"></i>
                         </button>
                     </div>
                 </div>
                 
                 <div class="flex space-x-3">
-                    <button id="testConnectionBtn" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors">
+                    <button type="button" id="testConnectionBtn" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors">
                         Test Connection
                     </button>
                     <div id="connectionStatus" class="flex-1 flex items-center justify-center px-4 py-2 rounded-md hidden">
@@ -85,10 +85,10 @@
                 </div>
                 
                 <div class="pt-4 border-t border-gray-200 flex justify-end space-x-3">
-                    <button id="cancelSyncSettings" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
+                    <button type="button" id="cancelSyncSettings" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
                         Cancel
                     </button>
-                    <button id="saveSyncSettings" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors">
+                    <button type="button" id="saveSyncSettings" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors">
                         Save Settings
                     </button>
                 </div>
@@ -136,7 +136,7 @@
                         <div class="text-center p-8 bg-white rounded-lg border-2 border-dashed border-gray-300 mb-4">
                             <i class="fas fa-barcode text-5xl text-gray-400 mb-4"></i>
                             <p class="text-gray-500 mb-4">Use your device camera to scan a barcode</p>
-                            <button id="startScannerBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors">
+                            <button id="startScannerBtn" type="button" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors">
                                 <i class="fas fa-camera mr-2"></i>Start Scanner
                             </button>
                         </div>
@@ -153,7 +153,7 @@
                                     <button id="stopScannerBtn" type="button" class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors hidden">Stop</button>
                                     <button id="switchCameraBtn" type="button" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition-colors hidden">Switch Camera</button>
                                 </div>
-                                <button onclick="stopScanner()" class="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl">&times;</button>
+                                <button type="button" onclick="stopScanner()" class="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl">&times;</button>
                             </div>
                         </div>
                     </div>
@@ -200,10 +200,10 @@
                             </div>
                             
                             <div class="mt-4 flex justify-center space-x-3">
-                                <button id="addStockBtn" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors">
+                                <button id="addStockBtn" type="button" class="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors">
                                     <i class="fas fa-plus mr-2"></i>Add Stock
                                 </button>
-                                <button id="removeStockBtn" class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors">
+                                <button id="removeStockBtn" type="button" class="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors">
                                     <i class="fas fa-minus mr-2"></i>Remove Stock
                                 </button>
                             </div>
@@ -244,7 +244,7 @@
         <h3 class="text-lg font-medium text-gray-900 mb-1">No inventory found</h3>
         <p class="text-gray-500">
           Try a different search term or
-          <button onclick="showTab('add-product')" class="text-indigo-600 hover:text-indigo-800">add a new product</button>.
+          <button type="button" onclick="showTab('add-product')" class="text-indigo-600 hover:text-indigo-800">add a new product</button>.
         </p>
       </div>
 
@@ -268,139 +268,207 @@
 </div>
 
             <!-- Add Product Tab -->
-            <div id="add-product" class="tab-content hidden">
-                <div class="glass-card p-6 rounded-xl">
-                    <h2 class="text-xl font-semibold mb-6 text-gray-800">Add New Product</h2>
-                    <form id="addProductForm" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Left Column -->
-                        <div class="space-y-4">
-                            <!-- Barcode -->
-                            <div>
-                                <label for="newBarcode" class="block text-sm font-medium text-gray-700 mb-1">Barcode</label>
-                                <div class="relative">
-                                    <input type="text" id="newBarcode" name="barcode" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter barcode">
-                                    <button type="button" onclick="scanNewBarcode()" class="absolute right-3 top-2 text-indigo-600 hover:text-indigo-500">
-                                        <i class="fas fa-barcode"></i> Scan
-                                    </button>
+<div id="add-product" class="tab-content hidden">
+    <div class="glass-card p-6 rounded-xl">
+        <h2 class="text-xl font-semibold mb-6 text-gray-800">Add New Product</h2>
+        <form id="addProductForm" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Left Column -->
+                <div class="space-y-4">
+                    <!-- Barcode -->
+                    <div>
+                        <label for="newBarcode" class="block text-sm font-medium text-gray-700 mb-1">Barcode</label>
+                        <div class="relative">
+                            <input type="text" id="newBarcode" name="barcode" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter barcode">
+                            <button type="button" onclick="scanNewBarcode()" class="absolute right-3 top-2 text-indigo-600 hover:text-indigo-500">
+                                <i class="fas fa-barcode"></i> Scan
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Product Name -->
+                    <div>
+                        <label for="productNameInput" class="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
+                        <input type="text" id="productNameInput" name="name" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <!-- Category -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                        <div class="flex items-center space-x-4">
+                            <label class="flex items-center">
+                                <input type="radio" name="categoryOption" value="select" checked class="mr-2 focus:ring-indigo-500">
+                                Select Category
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="categoryOption" value="add" class="mr-2 focus:ring-indigo-500">
+                                Add New Category
+                            </label>
+                        </div>
+                        <div id="selectCategoryWrapper" class="mt-2">
+                            <select id="category" name="category" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="">Select Category</option>
+                                <option value="Electronics">Electronics</option>
+                                <option value="Clothing">Clothing</option>
+                                <option value="Home & Garden">Home & Garden</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div id="addCategoryWrapper" class="mt-2 hidden">
+                            <input type="text" id="newCategoryInput" name="newCategory" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter new category">
+                        </div>
+                    </div>
+                    <!-- Description -->
+                    <div>
+                        <label for="productDescription" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <textarea id="productDescription" name="description" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="space-y-4">
+                    <!-- Unit Cost & Selling Price -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="unitCost" class="block text-sm font-medium text-gray-700 mb-1">Unit Cost</label>
+                            <div class="relative rounded-md shadow-sm">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span class="text-gray-500 sm:text-sm">$</span>
                                 </div>
+                                <input type="number" step="0.01" id="unitCost" name="unitCost" class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-7 pr-12 py-2 border-gray-300 rounded-md" placeholder="0.00">
                             </div>
-                            
-                            <!-- Product Name -->
-                            <div>
-                                <label for="productNameInput" class="block text-sm font-medium text-gray-700 mb-1">Product Name *</label>
-                                <input type="text" id="productNameInput" name="name" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label for="sellingPrice" class="block text-sm font-medium text-gray-700 mb-1">Selling Price</label>
+                            <div class="relative rounded-md shadow-sm">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span class="text-gray-500 sm:text-sm">$</span>
+                                </div>
+                                <input type="number" step="0.01" id="sellingPrice" name="sellingPrice" class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-7 pr-12 py-2 border-gray-300 rounded-md" placeholder="0.00">
                             </div>
+                        </div>
+                    </div>
+                    <!-- Initial Stock & Reorder Threshold -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="initialStock" class="block text-sm font-medium text-gray-700 mb-1">Initial Stock</label>
+                            <input type="number" id="initialStock" name="initialStock" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label for="reorderThreshold" class="block text-sm font-medium text-gray-700 mb-1">Reorder Threshold</label>
+                            <input type="number" id="reorderThreshold" name="reorderThreshold" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="Leave empty for none">
+                        </div>
+                    </div>
+                    <!-- Expiry Date -->
+                    <div>
+                        <label for="expiryDate" class="block text-sm font-medium text-gray-700 mb-1">Expiry Date</label>
+                        <div class="relative">
+                            <input type="date" id="expiryDate" name="expiryDate" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                                <i class="fas fa-calendar-alt text-gray-400"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Image Upload/Capture -->
+                    <div>
+                        <!-- Keep this label, it's correct for the whole section -->
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
+                        <div class="flex flex-col space-y-4">
                             
-                            <!-- Category -->
-                            <div>
-                                <label for="productCategorySelect" class="block text-sm font-medium text-gray-700 mb-1">Category *</label>
-                                <div class="relative">
-                                    <select id="productCategorySelect" name="category" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                                        <option value="">Select a category</option>
-                                        <option value="Electronics">Electronics</option>
-                                        <option value="Clothing">Clothing</option>
-                                        <option value="Home & Garden">Home & Garden</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                    <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                                        <i class="fas fa-chevron-down text-gray-400"></i>
+                            <!-- This whole 'productImageSection' div is correct and should be kept as is -->
+                            <div id="productImageSection" class="mt-4 p-4 border rounded-lg bg-white">
+                                <!-- The label inside this div is also correct -->
+                                <label class="block text-gray-700 text-sm font-bold mb-2">Product Image</label>
+
+                                <!-- Camera Container (initially hidden) -->
+                                <div id="camera-container" class="hidden relative w-full aspect-video rounded-md overflow-hidden">
+                                    <video id="product-camera-preview" class="absolute inset-0 w-full h-full object-cover" autoplay playsinline></video>
+                                    <button id="capture-product-photo-btn" class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-full shadow-lg">Capture Photo</button>
+                                    <button id="switch-camera-btn-product" class="absolute top-2 right-2 bg-gray-800 text-white py-1 px-3 rounded-full text-sm">Switch Camera</button>
+                                    <button id="cancel-product-camera-btn" class="absolute top-2 left-2 bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded-full text-sm">Cancel</button>
+                                </div>
+
+                                <!-- Image Preview Container (initially hidden) -->
+                                <div id="image-preview-container" class="hidden relative w-full aspect-video rounded-md p-4">
+                                    <img id="product-image-preview" src="#" alt="Product Preview" class="absolute inset-0 w-full h-full object-cover">
+                                    <div class="absolute bottom-4 left-0 right-0 flex justify-center space-x-4">
+                                        <button id="retake-product-photo-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full shadow-lg">Retake Photo</button>
+                                        <button id="use-this-photo-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full shadow-lg">Use This Photo</button>
                                     </div>
                                 </div>
-                                <input type="text" id="newCategoryInput" name="newCategory" class="hidden w-full mt-2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter new category">
+
+                                <!-- Hidden input to store base64 image data -->
+                                <input type="hidden" id="product-image-data" name="product_image">
+
+                                <!-- THIS IS THE ONLY "Take Photo" button that should exist in the HTML -->
+                                <button id="take-photo-trigger-btn" class="mt-4 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full shadow-lg w-full">Take Photo</button>
+                            </div>
+
+                            <!-- REMOVE THIS BLOCK (Duplicate "Take Photo" button and associated elements) -->
+                            <!--
+                            <input type="hidden" id="product-image-data" name="product_image">
+                            <button type="button" onclick="startProductPhotoCamera()" 
+                                    class="mt-2 bg-green-500 text-white px-4 py-2 rounded">
+                                Take Photo
+                            </button>
+                            -->
+                            
+                            <!-- OR Divider -->
+                            <div class="flex items-center">
+                                <div class="flex-grow border-t border-gray-300"></div>
+                                <div class="px-3 text-gray-500">OR</div>
+                                <div class="flex-grow border-t border-gray-300"></div>
                             </div>
                             
-                            <!-- Description -->
-                            <!-- <div>
-                                <label for="productDescription" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                <textarea id="productDescription" name="description" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
-                            </div>
-                        </div> -->
-                        
-                        <!-- Right Column -->
-                        <div class="space-y-4">
-                            <!-- Unit Cost & Selling Price -->
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label for="unitCost" class="block text-sm font-medium text-gray-700 mb-1">Unit Cost *</label>
-                                    <div class="relative rounded-md shadow-sm">
-                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <span class="text-gray-500 sm:text-sm">$</span>
-                                        </div>
-                                        <input type="number" step="0.01" id="unitCost" name="unitCost" required class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-7 pr-12 py-2 border-gray-300 rounded-md" placeholder="0.00">
-                                    </div>
-                                </div>
-                                <div>
-                                    <label for="sellingPrice" class="block text-sm font-medium text-gray-700 mb-1">Selling Price *</label>
-                                    <div class="relative rounded-md shadow-sm">
-                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <span class="text-gray-500 sm:text-sm">$</span>
-                                        </div>
-                                        <input type="number" step="0.01" id="sellingPrice" name="sellingPrice" required class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-7 pr-12 py-2 border-gray-300 rounded-md" placeholder="0.00">
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Initial Stock & Reorder Threshold -->
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label for="initialStock" class="block text-sm font-medium text-gray-700 mb-1">Initial Stock *</label>
-                                    <input type="number" id="initialStock" name="initialStock" required class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                                </div>
-                                <div>
-                                    <label for="reorderThreshold" class="block text-sm font-medium text-gray-700 mb-1">Reorder Threshold</label>
-                                    <input type="number" id="reorderThreshold" name="reorderThreshold" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="Leave empty for none">
-                                </div>
-                            </div>
-                            
-                            <!-- Expiry Date -->
-                            <div>
-                                <label for="expiryDate" class="block text-sm font-medium text-gray-700 mb-1">Expiry Date</label>
-                                <div class="relative">
-                                    <input type="date" id="expiryDate" name="expiryDate" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                                    <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                                        <i class="fas fa-calendar-alt text-gray-400"></i>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Image Upload -->
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
-                                <div id="dropzone" class="dropzone flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                            <!-- Upload Image -->
+                            <div class="flex-1">
+                                <div id="dropzone" class="dropzone flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md cursor-pointer">
                                     <div class="space-y-1 text-center">
-                                        <div class="flex justify-center">
-                                            <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-4"></i>
-                                        </div>
-                                        <div class="flex text-sm text-gray-600">
-                                            <label for="file-upload" class="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none">
-                                                <span>Upload a file</span>
-                                                <input id="file-upload" name="file-upload" type="file" class="sr-only" accept="image/*">
-                                            </label>
-                                            <p class="pl-1">or drag and drop</p>
-                                        </div>
-                                        <p class="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</p>
+                                        <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                        <p class="text-sm text-gray-600">Drag and drop or click to upload</p>
+                                        <input id="file-upload" name="file-upload" type="file" class="hidden" accept="image/*">
                                     </div>
-                                </div>
-                                <div id="imagePreviewContainer" class="hidden mt-2">
-                                    <img id="imagePreview" src="#" alt="Preview" class="h-32 object-contain border border-gray-200 rounded">
-                                    <button id="removeImageBtn" class="mt-2 text-sm text-red-600 hover:text-red-800">
-                                        <i class="fas fa-trash-alt mr-1"></i>Remove Image
-                                    </button>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="md:col-span-2 pt-4 border-t border-gray-200 flex justify-end space-x-3">
-                            <button type="button" onclick="resetAddProductForm()" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
-                                Cancel
-                            </button>
-                            <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors">
-                                Save Product
+                        <div id="imagePreviewContainer" class="hidden mt-4">
+                            <img id="imagePreview" src="#" alt="Preview" class="h-64 w-full object-contain border border-gray-200 rounded">
+                            <button type="button" onclick="removeImage()" class="mt-2 w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                                <i class="fas fa-trash-alt mr-2"></i>Remove Image
                             </button>
                         </div>
-                    </form>
+                    </div>
                 </div>
             </div>
+            <div class="mt-6 flex justify-center">
+                <button type="submit" class="px-6 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Add Product</button>
+            </div>
+        </form>
+    </div>
+</div>
+        <!-- View Inventory Section -->
+        <!-- <div id="viewInventory" class="mt-8">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">Inventory</h2>
+            <div class="overflow-x-auto">
+                <table id="inventoryTable" class="min-w-full bg-white border border-gray-200 rounded-md">
+                    <thead>
+                        <tr class="bg-gray-50">
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Barcode</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Name</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Category</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Unit Cost</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Selling Price</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Stock</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Reorder Threshold</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Expiry Date</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Image</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-700">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div> -->
 
             <!-- Alerts Tab -->
             <div id="alerts" class="tab-content hidden">
@@ -408,10 +476,10 @@
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
                         <h2 class="text-xl font-semibold text-gray-800">Inventory Alerts</h2>
                         <div class="flex space-x-2 mt-3 sm:mt-0">
-                            <button id="acknowledgeAllBtn" class="px-3 py-1 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors text-sm">
+                            <button id="acknowledgeAllBtn" type="button" class="px-3 py-1 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors text-sm">
                                 <i class="fas fa-check-circle mr-1"></i>Acknowledge All
                             </button>
-                            <button id="createBulkOrderBtn" class="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm">
+                            <button id="createBulkOrderBtn" type="button" class="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm">
                                 <i class="fas fa-clipboard-list mr-1"></i>Create Bulk Order
                             </button>
                         </div>
@@ -692,7 +760,7 @@
                                     <p class="text-sm mt-1">ETA: June 25, 2023</p>
                                 </div>
                                 
-                                <button class="w-full mt-2 text-sm text-indigo-600 hover:text-indigo-800 text-left">
+                                <button type="button" class="w-full mt-2 text-sm text-indigo-600 hover:text-indigo-800 text-left">
                                     <i class="fas fa-history mr-2"></i>View Order History
                                 </button>
                             </div>
@@ -709,7 +777,7 @@
     <div class="p-6">
       <div class="flex justify-between items-start mb-4">
         <h3 class="text-xl font-bold text-gray-800">Product Details</h3>
-        <button onclick="closeProductDetails()" class="text-gray-500 hover:text-gray-700">
+        <button type="button" onclick="closeProductDetails()" class="text-gray-500 hover:text-gray-700">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -815,10 +883,10 @@
       
     
       <div class="flex justify-end space-x-3">
-        <button onclick="closeProductDetails()" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
+        <button type="button" onclick="closeProductDetails()" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
           Close
         </button>
-        <button id="toggleEditBtn" onclick="toggleEditProduct()" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors">
+        <button type="button" id="toggleEditBtn" onclick="toggleEditProduct()" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors">
           <i class="fas fa-edit mr-2"></i>Edit Product
         </button>
       </div>
@@ -832,7 +900,7 @@
     <div class="p-6">
       <div class="flex justify-between items-start mb-4">
         <h3 class="text-xl font-bold text-gray-800">Add Stock</h3>
-        <button onclick="closeAddStockModal()" class="text-gray-500 hover:text-gray-700">
+        <button type="button" onclick="closeAddStockModal()" class="text-gray-500 hover:text-gray-700">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -883,7 +951,7 @@
             <div class="p-6">
                 <div class="flex justify-between items-start mb-4">
                     <h3 class="text-xl font-bold text-gray-800">Remove Stock</h3>
-                    <button onclick="closeRemoveStockModal()" class="text-gray-500 hover:text-gray-700">
+                    <button type="button" onclick="closeRemoveStockModal()" class="text-gray-500 hover:text-gray-700">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -932,7 +1000,7 @@
         </div>
         <div class="pl-4 text-sm font-normal">
             <span id="toastMessage">Operation completed successfully.</span>
-            <button onclick="hideToast()" class="absolute top-1 right-1 text-gray-400 hover:text-gray-900">
+            <button type="button" onclick="hideToast()" class="absolute top-1 right-1 text-gray-400 hover:text-gray-900">
                 <i class="fas fa-times"></i>
             </button>
         </div>
